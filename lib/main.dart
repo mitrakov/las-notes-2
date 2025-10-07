@@ -465,7 +465,7 @@ class _MainState extends State<Main> {
 
   void _showAboutDialog() async {
     final info = await PackageInfo.fromPlatform();
-    final text = "v${info.version} (build: ${info.buildNumber})\n\n© Artem Mitrakov. All rights reserved\nmitrakov-artem@yandex.ru";
+    final text = "v${info.version} (build: ${info.buildNumber})\n\nCopyright © 2024-2025\nmitrakov-artem@yandex.ru\nAll rights reserved.";
     FlutterPlatformAlert.showAlert(windowTitle: info.appName, text: text, iconStyle: IconStyle.information);
   }
 
