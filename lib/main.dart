@@ -87,7 +87,7 @@ class _MainState extends State<Main> {
       ),
       body: model.currentPath == null
           ? const Center(child: Text("Welcome!\nOpen a DB file"))
-          : Padding(padding: const EdgeInsets.all(8.0), child: _makeMainArea(model)),
+          : Padding(padding: const EdgeInsets.all(8.0), child: _makeMainAreaMobile(model)),
       drawer: Drawer(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -114,7 +114,10 @@ class _MainState extends State<Main> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: OutlinedButton(
-                      style: ButtonStyle(alignment: Alignment.centerLeft, backgroundColor: MaterialStateProperty.all(Colors.brown[50])),
+                      style: ButtonStyle(
+                        alignment: Alignment.centerLeft,
+                        backgroundColor: MaterialStateProperty.all(Colors.brown[50])
+                      ),
                       child: Text(tag),
                       onPressed: () {
                         _setReadMode(tag, SearchMode.tag);
@@ -201,11 +204,6 @@ class _MainState extends State<Main> {
     //if (_isDesktop) windowManager.setTitle(_path != null ? basename(_path!) : "Tommynotes");
     final settings = Settings.local;
 
-    //final recentFilesMenus = Settings.instance.settings.getStringList(_settingsRecentFilesKey)?.map((path) =>
-    final recentFilesMenus = settings.recentFiles.map((path) =>
-        PlatformMenuItem(label: path, onSelected: () => model.openFile(path))
-    ).toList();
-
     return PlatformMenuBar(
       menus: [ // TODO: create menu for Windows/Linux
         PlatformMenu(
@@ -220,7 +218,9 @@ class _MainState extends State<Main> {
         PlatformMenu(
           label: "File",
           menus: [
-            PlatformMenu(label: "Open Recent", menus: recentFilesMenus),
+            PlatformMenu(label: "Open Recent", menus: settings.recentFiles.map((path) =>
+              PlatformMenuItem(label: path, onSelected: () => model.openFile(path))
+            ).toList()),
             PlatformMenuItemGroup(members: [
               PlatformMenuItem(label: "New File", onSelected: model.newFile),
               PlatformMenuItem(label: "Open...", onSelected: model.openFileWithDialog),
@@ -232,6 +232,7 @@ class _MainState extends State<Main> {
       child: Shortcuts(
         shortcuts: {
           const SingleActivator(LogicalKeyboardKey.f1)                                                : AboutIntent(),
+          const SingleActivator(LogicalKeyboardKey.escape)                                            : EscapeIntent(),
           SingleActivator(LogicalKeyboardKey.keyN, meta: Platform.isMacOS, control: !Platform.isMacOS): NewDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: Platform.isMacOS, control: !Platform.isMacOS): OpenDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyS, meta: Platform.isMacOS, control: !Platform.isMacOS): SaveNoteIntent(),
@@ -241,10 +242,11 @@ class _MainState extends State<Main> {
         child: Actions(
           actions: {
             AboutIntent:       CallbackAction(onInvoke: (_) => _showAboutDialog()),
-            NewDbFileIntent:   CallbackAction(onInvoke: (_) => model.newFile),
-            OpenDbFileIntent:  CallbackAction(onInvoke: (_) => model.openFileWithDialog),
+            EscapeIntent:      CallbackAction(onInvoke: (_) => _setReadMode(_search, _searchMode)),
+            NewDbFileIntent:   CallbackAction(onInvoke: (_) => model.newFile()),
+            OpenDbFileIntent:  CallbackAction(onInvoke: (_) => model.openFileWithDialog()),
             SaveNoteIntent:    CallbackAction(onInvoke: (_) => _saveNote()),
-            CloseDbFileIntent: CallbackAction(onInvoke: (_) => model.closeFile),
+            CloseDbFileIntent: CallbackAction(onInvoke: (_) => model.closeFile()),
             CloseAppIntent:    CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts TODO RTFM about FocusNode
@@ -262,7 +264,10 @@ class _MainState extends State<Main> {
                             child: Padding( // TODO to method
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: OutlinedButton(
-                                style: ButtonStyle(alignment: Alignment.centerLeft, backgroundColor: MaterialStateProperty.all(Colors.brown[50])),
+                                style: ButtonStyle(
+                                  alignment: Alignment.centerLeft,
+                                  backgroundColor: MaterialStateProperty.all(Colors.brown[50])
+                                ),
                                 child: Text(tag),
                                 onPressed: () {
                                   _setReadMode(tag, SearchMode.tag);
@@ -271,23 +276,25 @@ class _MainState extends State<Main> {
                               ),
                             ),
                           )).toList();
-                          return ListView(children: [
-                            Row(children: [
-                              TrixIconTextButton.icon(
-                                icon: const Icon(Icons.add_box_rounded),
-                                label: const Text("New"),
-                                onPressed: () => _setEditMode(null, "", ""),
-                              ),
-                              Expanded(
-                                child: TextField(
-                                  decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
-                                  onSubmitted: (s) { _setReadMode(s, SearchMode.keyword); },
+
+                          return ListView(padding: const EdgeInsets.all(6),
+                            children: [
+                              Row(children: [
+                                TrixIconTextButton.icon(
+                                  icon: const Icon(Icons.add_box_rounded),
+                                  label: const Text("New"),
+                                  onPressed: () => _setEditMode(null, "", ""),
                                 ),
-                              ),
-                            ]),
-                            const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                            ...tags,
-                          ]);
+                                Expanded(
+                                  child: TextField(
+                                    decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
+                                    onSubmitted: (s) { _setReadMode(s, SearchMode.keyword); },
+                                  ),
+                                ),
+                              ]),
+                              const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              ...tags,
+                            ]);
                         } else return const CircularProgressIndicator();
                       },
                     ),
@@ -297,28 +304,45 @@ class _MainState extends State<Main> {
                     child: Column(children: [ // [top: edit/render panels, bottom: edit-tags/buttons panels]
                       Expanded(child: _editorMode == EditorMode.edit
                         ? Row(children: [ // [left: edit panel, right: render panel]
-                            Expanded(child: TrixContainer(child: TextField(controller: _currentText, maxLines: 1024, onChanged: (s) => setState(() {})))),
+                            Expanded(child: TrixContainer(child: TextField(
+                              controller: _currentText,
+                              maxLines: 1024,
+                              onChanged: (s) => setState(() {}) // TODO addListener
+                            ))),
                             Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
                           ])
-                        : TrixContainer(child: FutureBuilder(
+                        : FutureBuilder(
                             future: _makeMainAreaDesktop(),
                             builder: (context, snapshot) => snapshot.data ?? const CircularProgressIndicator(),
-                          )),
+                          ),
                       ),
                       Visibility(
                         visible: _editorMode == EditorMode.edit,
-                        child: TrixContainer(child: Row(children: [
-                          SizedBox(
-                            width: 300,
-                            child: TextFormField(
-                              controller: _currentTags,
-                              decoration: const InputDecoration(label: Text("Tags"), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-                              onEditingComplete: _saveNote,
-                            )
+                        child: Row(children: [
+                          Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: SizedBox(
+                              width: 400,
+                              child: TextFormField(
+                                controller: _currentTags,
+                                decoration: const InputDecoration(
+                                  label: Text("Tags:"),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                                  hintText: "Tag1, Tag2, ..."
+                                ),
+                                onEditingComplete: _saveNote,
+                              )
+                            ),
                           ),
                           const SizedBox(width: 10),
-                          OutlinedButton(onPressed: _saveNote, child: Text(_currentNoteId == null ? "Save" : "Update")),
-                        ])),
+                          FilledButton(style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
+                            minimumSize: const MaterialStatePropertyAll(Size(120, 50))),
+                            onPressed: _saveNote,
+                            child: Text(_currentNoteId == null ? "Save" : "Update",
+                              style: const TextStyle(fontSize: 18),
+                            )),
+                        ]),
                       )],
                     ),
                   )],
@@ -331,13 +355,13 @@ class _MainState extends State<Main> {
     );
   }
 
-  Widget _makeMainArea(TheModel model) {
+  Widget _makeMainAreaMobile(TheModel model) {
     switch (_editorMode) {
       case EditorMode.read:
         return ListView(children: _notes.map((note) => TrixContainer(child: GestureDetector(
           onLongPress: () => _contextMenu(note), // doesn't work on iOS (=> also use DoubleTap)
           onDoubleTap: () => _contextMenu(note),
-          child: MarkdownWidget(data: note.data, shrinkWrap: true,)))).toList()
+          child: MarkdownWidget(data: note.data, shrinkWrap: true)))).toList()
         );
       case EditorMode.edit:
         return Column(children: [
@@ -402,44 +426,28 @@ class _MainState extends State<Main> {
   }
 
   Future<Widget> _makeMainAreaDesktop() async {
+    const editTitle = "Edit note";
+    const archiveTitle = "Archive note";
+    const deleteTitle = "Delete note";
     final model = ScopedModel.of<TheModel>(context);
-    final children = _notes.map((note) => TrixContainer(child: Stack(
-      alignment: Alignment.topRight,
-      children: [
-        MarkdownWidget(data: note.data, shrinkWrap: true),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TrixContainer(child: Text( "🔖 ${note.tags}")),
-            const SizedBox(width: 8),
-            FloatingActionButton(
-              tooltip: "Edit",
-              mini: true,
-              backgroundColor: Colors.blue[100],
-              onPressed: () => _setEditMode(note.id, note.data, note.tags),
-              child: const Icon(Icons.edit),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton(
-              tooltip: "Archive",
-              mini: true,
-              backgroundColor: Colors.brown[200],
-              onPressed: () => model.archiveNoteById(note.id),
-              child: const Icon(Icons.archive_outlined),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton(
-              tooltip: "Delete",
-              mini: true,
-              backgroundColor: Colors.red[300],
-              onPressed: () => model.deleteNoteById(note.id),
-              child: const Icon(Icons.remove_circle_outline_rounded),
-            ),
-          ],
-        ),
-      ]
-    ))).toList();
+    final children = _notes.map((note) => ContextMenuRegion(
+      menuItems: [MenuItem(title: editTitle), MenuItem(title: archiveTitle), MenuItem(title: deleteTitle)],
+      onItemSelected: (item) async { // MenuItem::onSelected doesn't work
+        switch (item.title) {
+          case editTitle:
+            _setEditMode(note.id, note.data, note.tags);
+            break;
+          case archiveTitle:
+            await model.archiveNoteById(note.id);
+            break;
+          case deleteTitle:
+            await model.deleteNoteById(note.id);
+            break;
+          default:
+        }
+      },
+      child: TrixContainer(child: MarkdownWidget(data: note.data, shrinkWrap: true)),
+    )).toList();
     return ListView(children: children);
   }
 
@@ -458,15 +466,16 @@ class _MainState extends State<Main> {
   void _closeFile() {
     final model = ScopedModel.of<TheModel>(context);
     if (fileChanged) {
+      const header = "DB file is not exported";
       const msg = "On iOS you have to share this file to external storage. Do you want to share?";
-      Utils.showAlert("DB file is not exported", msg, IconStyle.information, AlertButtonStyle.yesNoCancel, _shareFile, model.closeFile);
+      Utils.showAlert(header, msg, IconStyle.information, AlertButtonStyle.yesNoCancel, _shareFile, model.closeFile);
     } else model.closeFile();
   }
 
   void _showAboutDialog() async {
-    final info = await PackageInfo.fromPlatform();
-    final text = "v${info.version} (build: ${info.buildNumber})\n\nCopyright © 2024-2025\nmitrakov-artem@yandex.ru\nAll rights reserved.";
-    FlutterPlatformAlert.showAlert(windowTitle: info.appName, text: text, iconStyle: IconStyle.information);
+    final i = await PackageInfo.fromPlatform();
+    final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2025\nmitrakov-artem@yandex.ru\nAll rights reserved.";
+    FlutterPlatformAlert.showAlert(windowTitle: i.appName, text: text, iconStyle: IconStyle.information);
   }
 
   void _shareFile() async {
@@ -523,6 +532,7 @@ enum EditorMode { read, edit }
 enum SearchMode { all, tag, keyword, id, random }
 
 class AboutIntent       extends Intent {}
+class EscapeIntent      extends Intent {}
 class NewDbFileIntent   extends Intent {}
 class OpenDbFileIntent  extends Intent {}
 class SaveNoteIntent    extends Intent {}
