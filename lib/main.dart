@@ -18,9 +18,11 @@ import 'package:lasnotes/widgets/trixcontainer.dart';
 import 'package:lasnotes/widgets/trixiconbutton.dart';
 import 'package:lasnotes/utils.dart';
 
+bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
-  await WindowManager.instance.ensureInitialized(); // must have
+  if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have
   await Settings.init(); // must have
   final model = TheModel();
   runApp(ScopedModel(model: model, child: LaApp(model)));
@@ -57,7 +59,6 @@ class _MainState extends State<Main> {
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
 
-  bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
   bool get fileChanged => Platform.isIOS ? _fileChanged : false;
   set fileChanged(bool v) { if (Platform.isIOS) _fileChanged = v; }
 
