@@ -11,6 +11,7 @@ import 'package:scoped_model/scoped_model.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
@@ -22,6 +23,14 @@ bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
+  
+  // bugs in Sqflite library:
+  // 1. https://stackoverflow.com/q/76158800         // enable FFI suport for Windows/Linux
+  // 2. https://stackoverflow.com/q/75837229         // add precompiled binary for Win64 from https://sqlite.org/download.html
+  if (Platform.isWindows) { // TODO check Linux
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have
   await Settings.init(); // must have
   final model = TheModel();

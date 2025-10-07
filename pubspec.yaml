@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   sqflite: 2.3.3                   # SQLite DB support
+  sqflite_common_ffi: 2.3.3        # necessary SQLite libs: https://stackoverflow.com/q/76158800
   markdown_widget: 2.3.2+8         # markdown widget
   file_picker: 8.0.5               # open-file dialog
   scoped_model: 2.0.0              # app state management
