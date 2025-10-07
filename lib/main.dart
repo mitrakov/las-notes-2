@@ -10,6 +10,7 @@ import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
@@ -19,7 +20,8 @@ import 'package:lasnotes/utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
-  await Settings.init();
+  await WindowManager.instance.ensureInitialized(); // must have
+  await Settings.init(); // must have
   final model = TheModel();
   runApp(ScopedModel(model: model, child: LaApp(model)));
 }
@@ -71,6 +73,8 @@ class _MainState extends State<Main> {
       if (_currentPath != model.currentPath) {
         _currentPath = model.currentPath;
         _setReadMode("", SearchMode.all);
+        if (isDesktop)
+          windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes"); // careful, heavy op
       }
       return isDesktop ? _buildForDesktop(context, model) : _buildForMobile(context, model);
     });
@@ -201,9 +205,7 @@ class _MainState extends State<Main> {
   }
 
   Widget _buildForDesktop(BuildContext context, TheModel model) {
-    //if (_isDesktop) windowManager.setTitle(_path != null ? basename(_path!) : "Tommynotes");
     final settings = Settings.local;
-
     return PlatformMenuBar(
       menus: [ // TODO: create menu for Windows/Linux
         PlatformMenu(
@@ -479,9 +481,10 @@ class _MainState extends State<Main> {
   }
 
   void _shareFile() async {
-    if (_currentPath != null) {
-      final filename = basename(_currentPath!);
-      Share.shareXFiles([XFile(_currentPath!)], subject: 'Export file "$filename"?');
+    final model = ScopedModel.of<TheModel>(context);
+    if (model.currentPath != null) {
+      final filename = basename(model.currentPath!);
+      Share.shareXFiles([XFile(model.currentPath!)], subject: 'Export file "$filename"?');
       fileChanged = false;
     }
   }
