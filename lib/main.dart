@@ -1,125 +1,530 @@
+// ignore_for_file: curly_braces_in_flow_control_structures, use_key_in_widget_constructors, sort_child_properties_last
+import 'dart:io';
+import 'dart:math';
+import 'package:path/path.dart' show basename;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_platform_alert/flutter_platform_alert.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:native_context_menu/native_context_menu.dart';
+import 'package:scoped_model/scoped_model.dart';
+import 'package:markdown_widget/markdown_widget.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:lasnotes/model/note.dart';
+import 'package:lasnotes/model/model.dart';
+import 'package:lasnotes/model/settings.dart';
+import 'package:lasnotes/widgets/trixcontainer.dart';
+import 'package:lasnotes/widgets/trixiconbutton.dart';
+import 'package:lasnotes/utils.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
+  await Settings.init();
+  final model = TheModel();
+  runApp(ScopedModel(model: model, child: LaApp(model)));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class LaApp extends StatelessWidget {
+  final TheModel model;
+  const LaApp(this.model);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: "Las Notes",
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo), useMaterial3: true),
+      home: Main(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+class Main extends StatefulWidget {
+  @override State<Main> createState() => _MainState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainState extends State<Main> {
+  final _currentText = TextEditingController(); // main text in add/edit mode
+  final _currentTags = TextEditingController(); // comma-separated tags in the text field
+  int? _currentNoteId;                          // if present, noteID in edit mode (otherwise NEW_NOTE mode)
+  var _oldTags = "";                            // old comma-separated tags for edit mode (to calc tags diff)
+  Iterable<Note> _notes = [];                   // in view mode, DB notes array for markdown view
+  var _search = "";                             // search by tag name (SearchMode.tag), keyword (.keyword) or ID (.id)
+  var _editorMode = EditorMode.edit;            // edit or view mode
+  var _searchMode = SearchMode.tag;             // how to search notes (by clicking tag, by full-text search, by ID, or ALL)
+  String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
+  var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
 
-  void _incrementCounter() {
+  bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  bool get fileChanged => Platform.isIOS ? _fileChanged : false;
+  set fileChanged(bool v) { if (Platform.isIOS) _fileChanged = v; }
+
+  @override
+  void initState() {
+    super.initState();
+    _currentText.addListener(() { setState(() {}); });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScopedModelDescendant<TheModel>(builder: (context, child, model) {
+      if (_currentPath != model.currentPath) {
+        _currentPath = model.currentPath;
+        _setReadMode("", SearchMode.all);
+      }
+      return isDesktop ? _buildForDesktop(context, model) : _buildForMobile(context, model);
+    });
+  }
+
+  Widget _buildForMobile(BuildContext context, TheModel model) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Las Notes"),
+        actions: [
+          IconButton(onPressed: _shareFile, icon: const Icon(Icons.ios_share)),
+          IconButton(onPressed: _showAboutDialog, icon: const Icon(Icons.info_outline)),
+        ],
+      ),
+      body: model.currentPath == null
+          ? const Center(child: Text("Welcome!\nOpen a DB file"))
+          : Padding(padding: const EdgeInsets.all(8.0), child: _makeMainArea(model)),
+      drawer: Drawer(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(children: [
+            const SizedBox(height: 50),
+            TextField(
+              decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
+              onSubmitted: (s) {
+                _setReadMode(s, SearchMode.keyword);
+                Navigator.pop(context);
+              },
+            ),
+            CheckboxListTile(
+              title: const Text("Show archive"),
+              value: model.showArchive,
+              onChanged: (v) => model.showArchive = v ?? false,
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: 20,),
+            const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            FutureBuilder(future: model.getTags(), builder: (context, snapshot) {
+              if (snapshot.hasData)
+                return Expanded(child: ListView(children: snapshot.data!.map((tag) =>
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: OutlinedButton(
+                      style: ButtonStyle(alignment: Alignment.centerLeft, backgroundColor: MaterialStateProperty.all(Colors.brown[50])),
+                      child: Text(tag),
+                      onPressed: () {
+                        _setReadMode(tag, SearchMode.tag);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ).toList()));
+              else return const CircularProgressIndicator(color: Colors.lime);
+            },)
+          ],),
+        ),
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Visibility(
+            visible: model.currentPath != null && _editorMode == EditorMode.read,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: FloatingActionButton(
+                heroTag: "newNote",
+                child: const Icon(Icons.note_add_outlined, size: 32),
+                backgroundColor: Colors.lightGreen[800],
+                onPressed: () => _setEditMode(null, "", ""),
+              ),
+            ),
+          ),
+          Visibility(
+            visible: model.currentPath != null && _editorMode == EditorMode.edit,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: FloatingActionButton(
+                heroTag: "saveNote",
+                child: const Icon(Icons.cloud_done_sharp, size: 32),
+                backgroundColor: Colors.green[500],
+                onPressed: _saveNote,
+              ),
+            ),
+          ),
+          Visibility(
+            visible: model.currentPath != null && _editorMode == EditorMode.edit,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: FloatingActionButton(
+                heroTag: "cancelEdit",
+                child: const Icon(Icons.cancel_presentation, size: 32),
+                backgroundColor: Colors.red[300],
+                onPressed: () => _setReadMode(_search, _searchMode),
+              ),
+            ),
+          ),
+          Visibility(
+            visible: model.currentPath == null,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: FloatingActionButton(
+                heroTag: "openFile",
+                child: const Icon(Icons.open_in_new, size: 32),
+                backgroundColor: Colors.blueAccent[100],
+                onPressed: model.openFileWithDialog,
+              ),
+            ),
+          ),
+          Visibility(
+            visible: model.currentPath != null && _editorMode == EditorMode.read,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: FloatingActionButton(
+                heroTag: "closeFile",
+                child: const Icon(Icons.stop_circle_outlined, size: 32),
+                backgroundColor: Colors.blueAccent[100],
+                onPressed: _closeFile,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForDesktop(BuildContext context, TheModel model) {
+    //if (_isDesktop) windowManager.setTitle(_path != null ? basename(_path!) : "Tommynotes");
+    final settings = Settings.local;
+
+    //final recentFilesMenus = Settings.instance.settings.getStringList(_settingsRecentFilesKey)?.map((path) =>
+    final recentFilesMenus = settings.recentFiles.map((path) =>
+        PlatformMenuItem(label: path, onSelected: () => model.openFile(path))
+    ).toList();
+
+    return PlatformMenuBar(
+      menus: [ // TODO: create menu for Windows/Linux
+        PlatformMenu(
+          label: "",
+          menus: [
+            PlatformMenuItemGroup(members: [
+              PlatformMenuItem(label: "About Tommynotes", onSelected: _showAboutDialog),
+            ]),
+            PlatformMenuItem(label: "Quit", onSelected: () => exit(0)),
+          ],
+        ),
+        PlatformMenu(
+          label: "File",
+          menus: [
+            PlatformMenu(label: "Open Recent", menus: recentFilesMenus),
+            PlatformMenuItemGroup(members: [
+              PlatformMenuItem(label: "New File", onSelected: model.newFile),
+              PlatformMenuItem(label: "Open...", onSelected: model.openFileWithDialog),
+            ]),
+            PlatformMenuItem(label: "Close File", onSelected: model.closeFile),
+          ],
+        ),
+      ],
+      child: Shortcuts(
+        shortcuts: {
+          const SingleActivator(LogicalKeyboardKey.f1)                                                : AboutIntent(),
+          SingleActivator(LogicalKeyboardKey.keyN, meta: Platform.isMacOS, control: !Platform.isMacOS): NewDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyO, meta: Platform.isMacOS, control: !Platform.isMacOS): OpenDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyS, meta: Platform.isMacOS, control: !Platform.isMacOS): SaveNoteIntent(),
+          SingleActivator(LogicalKeyboardKey.keyW, meta: Platform.isMacOS, control: !Platform.isMacOS): CloseDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyQ, meta: Platform.isMacOS, control: !Platform.isMacOS): CloseAppIntent(),
+        },
+        child: Actions(
+          actions: {
+            AboutIntent:       CallbackAction(onInvoke: (_) => _showAboutDialog()),
+            NewDbFileIntent:   CallbackAction(onInvoke: (_) => model.newFile),
+            OpenDbFileIntent:  CallbackAction(onInvoke: (_) => model.openFileWithDialog),
+            SaveNoteIntent:    CallbackAction(onInvoke: (_) => _saveNote()),
+            CloseDbFileIntent: CallbackAction(onInvoke: (_) => model.closeFile),
+            CloseAppIntent:    CallbackAction(onInvoke: (_) => exit(0)),
+          },
+          child: Focus(               // needed for Shortcuts TODO RTFM about FocusNode
+            autofocus: true,          // focused by default
+            child: Scaffold(
+              body: model.currentPath == null ? const Center(child: Text("Welcome!\nOpen or create a new DB file")) : Center(
+                child: Row(children: [ // [left: tags, right: main window]
+                  Expanded( // tags
+                    child: FutureBuilder(
+                      future: model.getTags(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final tags = snapshot.data!.map((tag) => Padding(
+                            padding: const EdgeInsets.only(top: 2), // Tag button on the left side
+                            child: Padding( // TODO to method
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: OutlinedButton(
+                                style: ButtonStyle(alignment: Alignment.centerLeft, backgroundColor: MaterialStateProperty.all(Colors.brown[50])),
+                                child: Text(tag),
+                                onPressed: () {
+                                  _setReadMode(tag, SearchMode.tag);
+                                  /// Navigator.pop(context);
+                                },
+                              ),
+                            ),
+                          )).toList();
+                          return ListView(children: [
+                            Row(children: [
+                              TrixIconTextButton.icon(
+                                icon: const Icon(Icons.add_box_rounded),
+                                label: const Text("New"),
+                                onPressed: () => _setEditMode(null, "", ""),
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
+                                  onSubmitted: (s) { _setReadMode(s, SearchMode.keyword); },
+                                ),
+                              ),
+                            ]),
+                            const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                            ...tags,
+                          ]);
+                        } else return const CircularProgressIndicator();
+                      },
+                    ),
+                  ),
+                  Flexible( // main window
+                    flex: 6,
+                    child: Column(children: [ // [top: edit/render panels, bottom: edit-tags/buttons panels]
+                      Expanded(child: _editorMode == EditorMode.edit
+                        ? Row(children: [ // [left: edit panel, right: render panel]
+                            Expanded(child: TrixContainer(child: TextField(controller: _currentText, maxLines: 1024, onChanged: (s) => setState(() {})))),
+                            Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
+                          ])
+                        : TrixContainer(child: FutureBuilder(
+                            future: _makeMainAreaDesktop(),
+                            builder: (context, snapshot) => snapshot.data ?? const CircularProgressIndicator(),
+                          )),
+                      ),
+                      Visibility(
+                        visible: _editorMode == EditorMode.edit,
+                        child: TrixContainer(child: Row(children: [
+                          SizedBox(
+                            width: 300,
+                            child: TextFormField(
+                              controller: _currentTags,
+                              decoration: const InputDecoration(label: Text("Tags"), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+                              onEditingComplete: _saveNote,
+                            )
+                          ),
+                          const SizedBox(width: 10),
+                          OutlinedButton(onPressed: _saveNote, child: Text(_currentNoteId == null ? "Save" : "Update")),
+                        ])),
+                      )],
+                    ),
+                  )],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _makeMainArea(TheModel model) {
+    switch (_editorMode) {
+      case EditorMode.read:
+        return ListView(children: _notes.map((note) => TrixContainer(child: GestureDetector(
+          onLongPress: () => _contextMenu(note), // doesn't work on iOS (=> also use DoubleTap)
+          onDoubleTap: () => _contextMenu(note),
+          child: MarkdownWidget(data: note.data, shrinkWrap: true,)))).toList()
+        );
+      case EditorMode.edit:
+        return Column(children: [
+          Expanded(child: TextField(
+            controller: _currentText,
+            autofocus: true,
+            keyboardType: TextInputType.multiline,
+            maxLines: null,
+            expands: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(1))),
+          )),
+          Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text, shrinkWrap: true))),
+          Row(children: [
+            const Text("Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
+            Expanded(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: TextField(
+                controller: _currentTags,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(1)),
+                  hintText: "Tag1, Tag2, ...",
+                ),
+              ),
+            )),
+            const SizedBox(width: 70)
+          ]),
+        ]);
+    }
+  }
+
+  void _contextMenu(Note note) async {
+    final model = ScopedModel.of<TheModel>(context);
+    final result = await FlutterPlatformAlert.showCustomAlert(
+      windowTitle: "Update note",
+      text: "${note.data.substring(0, min(note.data.length, 25))}...",
+      iconStyle: IconStyle.question,
+      positiveButtonTitle: "Edit",
+      neutralButtonTitle: "Archive",
+      negativeButtonTitle: "Delete",
+      options: PlatformAlertOptions(
+        macos: MacosAlertOptions(isNegativeActionDestructive: true),
+        ios: IosAlertOptions(negativeButtonStyle: IosButtonStyle.destructive),
+        // TODO other platforms
+      ),
+    );
+    switch (result) {
+      case CustomButton.positiveButton:
+        _setEditMode(note.id, note.data, note.tags);
+        break;
+      case CustomButton.neutralButton:
+        model.archiveNoteById(note.id);
+        break;
+      case CustomButton.negativeButton:
+        model.deleteNoteById(note.id);
+        break;
+      default:
+    }
+  }
+
+  Future<Widget> _makeMainAreaDesktop() async {
+    final model = ScopedModel.of<TheModel>(context);
+    final children = _notes.map((note) => TrixContainer(child: Stack(
+      alignment: Alignment.topRight,
+      children: [
+        MarkdownWidget(data: note.data, shrinkWrap: true),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TrixContainer(child: Text( "🔖 ${note.tags}")),
+            const SizedBox(width: 8),
+            FloatingActionButton(
+              tooltip: "Edit",
+              mini: true,
+              backgroundColor: Colors.blue[100],
+              onPressed: () => _setEditMode(note.id, note.data, note.tags),
+              child: const Icon(Icons.edit),
+            ),
+            const SizedBox(width: 8),
+            FloatingActionButton(
+              tooltip: "Archive",
+              mini: true,
+              backgroundColor: Colors.brown[200],
+              onPressed: () => model.archiveNoteById(note.id),
+              child: const Icon(Icons.archive_outlined),
+            ),
+            const SizedBox(width: 8),
+            FloatingActionButton(
+              tooltip: "Delete",
+              mini: true,
+              backgroundColor: Colors.red[300],
+              onPressed: () => model.deleteNoteById(note.id),
+              child: const Icon(Icons.remove_circle_outline_rounded),
+            ),
+          ],
+        ),
+      ]
+    ))).toList();
+    return ListView(children: children);
+  }
+
+  void _saveNote() async {
+    if (_currentText.text.trim().isEmpty) return;
+
+    final model = ScopedModel.of<TheModel>(context);
+    final newId = await model.saveNote(_currentNoteId, _currentText.text, _currentTags.text, _oldTags);
+    if (newId != null) {
+      fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
+      _setReadMode(newId.toString(), SearchMode.id);
+    }
+    // TODO: else set focus to tags
+  }
+
+  void _closeFile() {
+    final model = ScopedModel.of<TheModel>(context);
+    if (fileChanged) {
+      const msg = "On iOS you have to share this file to external storage. Do you want to share?";
+      Utils.showAlert("DB file is not exported", msg, IconStyle.information, AlertButtonStyle.yesNoCancel, _shareFile, model.closeFile);
+    } else model.closeFile();
+  }
+
+  void _showAboutDialog() async {
+    final info = await PackageInfo.fromPlatform();
+    final text = "v${info.version} (build: ${info.buildNumber})\n\n© Artem Mitrakov. All rights reserved\nmitrakov-artem@yandex.ru";
+    FlutterPlatformAlert.showAlert(windowTitle: info.appName, text: text, iconStyle: IconStyle.information);
+  }
+
+  void _shareFile() async {
+    if (_currentPath != null) {
+      final filename = basename(_currentPath!);
+      Share.shareXFiles([XFile(_currentPath!)], subject: 'Export file "$filename"?');
+      fileChanged = false;
+    }
+  }
+
+  void _setEditMode(int? noteId, String text, String tags) async {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _currentText.text = text;
+      _currentTags.text = tags;
+      _currentNoteId = noteId;
+      _oldTags = tags;
+      _notes = [];
+      _editorMode = EditorMode.edit;
+      /// _search = _search;
+      /// _searchMode = _searchMode;
+    });
+  }
+
+  Future<void> _setReadMode(String search, SearchMode by) async {
+    final model = ScopedModel.of<TheModel>(context);
+    final Iterable<Note> notes =
+      by == SearchMode.all     ? await model.getAllNotes(model.showArchive) :
+      by == SearchMode.tag     ? await model.searchByTag(search, model.showArchive) :
+      by == SearchMode.keyword ? await model.searchByKeyword(search, model.showArchive) :
+      by == SearchMode.id      ? await model.searchById(int.tryParse(search) ?? 0).then((note) => [if (note != null) note]) :
+      by == SearchMode.random  ? await model.getRandomNotes(model.showArchive, 10) : [];
+
+    setState(() {
+      _currentText.text = "";
+      _currentTags.text = "";
+      _currentNoteId = null;
+      _oldTags = "";
+      _notes = notes;
+      _editorMode = EditorMode.read;
+      _search = search;
+      _searchMode = by;
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+  void dispose() {
+    _currentText.dispose();
+    _currentTags.dispose();
+    super.dispose();
   }
 }
+
+enum EditorMode { read, edit }
+enum SearchMode { all, tag, keyword, id, random }
+
+class AboutIntent       extends Intent {}
+class NewDbFileIntent   extends Intent {}
+class OpenDbFileIntent  extends Intent {}
+class SaveNoteIntent    extends Intent {}
+class CloseDbFileIntent extends Intent {}
+class CloseAppIntent    extends Intent {}
