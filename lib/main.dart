@@ -31,9 +31,11 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have
   await Settings.init(); // must have
   final model = TheModel();
+
   runApp(ScopedModel(model: model, child: LaApp(model)));
 }
 
@@ -57,6 +59,11 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
+  final _focusNodeGlobal = FocusNode();         // main global focus for the whole desktop app (to get shortcuts working)
+  final _focusNodeText = FocusNode();           // main text focus
+  final _focusNodeTags = FocusNode();           // comma-separated tags focus
+  final _focusNodeSearch = FocusNode();         // global search focus
+
   final _currentText = TextEditingController(); // main text in add/edit mode
   final _currentTags = TextEditingController(); // comma-separated tags in the text field
   int? _currentNoteId;                          // if present, noteID in edit mode (otherwise NEW_NOTE mode)
@@ -108,6 +115,7 @@ class _MainState extends State<Main> {
           child: Column(children: [
             const SizedBox(height: 50),
             TextField(
+              focusNode: _focusNodeSearch,
               decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
               onSubmitted: (s) {
                 _setReadMode(s, SearchMode.keyword);
@@ -216,6 +224,7 @@ class _MainState extends State<Main> {
 
   Widget _buildForDesktop(BuildContext context, TheModel model) {
     final settings = Settings.local;
+    final isMacOS = Platform.isMacOS;
     return PlatformMenuBar(
       menus: [ // TODO: create menu for Windows/Linux
         PlatformMenu(
@@ -243,26 +252,31 @@ class _MainState extends State<Main> {
       ],
       child: Shortcuts(
         shortcuts: {
-          const SingleActivator(LogicalKeyboardKey.f1)                                                : AboutIntent(),
-          const SingleActivator(LogicalKeyboardKey.escape)                                            : EscapeIntent(),
-          SingleActivator(LogicalKeyboardKey.keyN, meta: Platform.isMacOS, control: !Platform.isMacOS): NewDbFileIntent(),
-          SingleActivator(LogicalKeyboardKey.keyO, meta: Platform.isMacOS, control: !Platform.isMacOS): OpenDbFileIntent(),
-          SingleActivator(LogicalKeyboardKey.keyS, meta: Platform.isMacOS, control: !Platform.isMacOS): SaveNoteIntent(),
-          SingleActivator(LogicalKeyboardKey.keyW, meta: Platform.isMacOS, control: !Platform.isMacOS): CloseDbFileIntent(),
-          SingleActivator(LogicalKeyboardKey.keyQ, meta: Platform.isMacOS, control: !Platform.isMacOS): CloseAppIntent(),
+          SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS, shift: true): NewDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS):              OpenDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyW, meta: isMacOS, control: !isMacOS):              CloseDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS):              NewNoteIntent(),
+          SingleActivator(LogicalKeyboardKey.keyS, meta: isMacOS, control: !isMacOS):              SaveNoteIntent(),
+          const SingleActivator(LogicalKeyboardKey.escape):                                        EscapeIntent(),
+          SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
+          const SingleActivator(LogicalKeyboardKey.f1):                                            AboutIntent(),
+          SingleActivator(LogicalKeyboardKey.keyQ, meta: isMacOS, control: !isMacOS):              CloseAppIntent(),
         },
         child: Actions(
           actions: {
-            AboutIntent:       CallbackAction(onInvoke: (_) => _showAboutDialog()),
-            EscapeIntent:      CallbackAction(onInvoke: (_) => _setReadMode(_search, _searchMode)),
-            NewDbFileIntent:   CallbackAction(onInvoke: (_) => model.newFile()),
-            OpenDbFileIntent:  CallbackAction(onInvoke: (_) => model.openFileWithDialog()),
-            SaveNoteIntent:    CallbackAction(onInvoke: (_) => _saveNote()),
-            CloseDbFileIntent: CallbackAction(onInvoke: (_) => model.closeFile()),
-            CloseAppIntent:    CallbackAction(onInvoke: (_) => exit(0)),
+            NewDbFileIntent:    CallbackAction(onInvoke: (_) => model.newFile()),
+            OpenDbFileIntent:   CallbackAction(onInvoke: (_) => model.openFileWithDialog()),
+            CloseDbFileIntent:  CallbackAction(onInvoke: (_) => model.closeFile()),
+            NewNoteIntent:      CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
+            SaveNoteIntent:     CallbackAction(onInvoke: (_) => _saveNote()),
+            EscapeIntent:       CallbackAction(onInvoke: (_) => _setReadMode(_search, _searchMode)),
+            GlobalSearchIntent: CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
+            AboutIntent:        CallbackAction(onInvoke: (_) => _showAboutDialog()),
+            CloseAppIntent:     CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts TODO RTFM about FocusNode
             autofocus: true,          // focused by default
+            focusNode: _focusNodeGlobal,
             child: Scaffold(
               body: model.currentPath == null ? const Center(child: Text("Welcome!\nOpen or create a new DB file")) : Center(
                 child: Row(children: [ // [left: tags, right: main window]
@@ -299,6 +313,7 @@ class _MainState extends State<Main> {
                                 ),
                                 Expanded(
                                   child: TextField(
+                                    focusNode: _focusNodeSearch,
                                     decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
                                     onSubmitted: (s) { _setReadMode(s, SearchMode.keyword); },
                                   ),
@@ -316,11 +331,19 @@ class _MainState extends State<Main> {
                     child: Column(children: [ // [top: edit/render panels, bottom: edit-tags/buttons panels]
                       Expanded(child: _editorMode == EditorMode.edit
                         ? Row(children: [ // [left: edit panel, right: render panel]
-                            Expanded(child: TrixContainer(child: TextField(
-                              controller: _currentText,
-                              maxLines: 1024,
-                              onChanged: (s) => setState(() {}) // TODO addListener
-                            ))),
+                            Expanded(child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: TextField(
+                                controller: _currentText,
+                                focusNode: _focusNodeText,
+                                autofocus: true,
+                                keyboardType: TextInputType.multiline,
+                                maxLines: 128, // only for sizing widget (it's not a real limit of lines)
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
+                              ),
+                            )),
                             Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
                           ])
                         : FutureBuilder(
@@ -335,8 +358,9 @@ class _MainState extends State<Main> {
                             padding: const EdgeInsets.all(4),
                             child: SizedBox(
                               width: 400,
-                              child: TextFormField(
+                              child: TextField(
                                 controller: _currentTags,
+                                focusNode: _focusNodeTags,
                                 decoration: const InputDecoration(
                                   label: Text("Tags:"),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
@@ -377,15 +401,15 @@ class _MainState extends State<Main> {
         );
       case EditorMode.edit:
         return Column(children: [
-          Expanded(child: TextField(
+          Expanded(child: TextField( // TODO reuse
             controller: _currentText,
+            focusNode: _focusNodeText,
             autofocus: true,
             keyboardType: TextInputType.multiline,
-            maxLines: null,
-            expands: true,
+            maxLines: 128, // only for sizing widget (it's not a real limit of lines)
             autocorrect: false,
             enableSuggestions: false,
-            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(1))),
+            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
           )),
           Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text, shrinkWrap: true))),
           Row(children: [
@@ -394,6 +418,7 @@ class _MainState extends State<Main> {
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: TextField(
                 controller: _currentTags,
+                focusNode: _focusNodeTags,
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: InputDecoration(
@@ -471,8 +496,7 @@ class _MainState extends State<Main> {
     if (newId != null) {
       fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
       _setReadMode(newId.toString(), SearchMode.id);
-    }
-    // TODO: else set focus to tags
+    } else _focusNodeTags.requestFocus();
   }
 
   void _closeFile() {
@@ -510,6 +534,7 @@ class _MainState extends State<Main> {
       /// _search = _search;
       /// _searchMode = _searchMode;
     });
+    _focusNodeText.requestFocus();
   }
 
   Future<void> _setReadMode(String search, SearchMode by) async {
@@ -531,6 +556,7 @@ class _MainState extends State<Main> {
       _search = search;
       _searchMode = by;
     });
+    _focusNodeGlobal.requestFocus();    // w/o this, shortcuts won't work, we need to focus something
   }
 
   @override
@@ -544,10 +570,12 @@ class _MainState extends State<Main> {
 enum EditorMode { read, edit }
 enum SearchMode { all, tag, keyword, id, random }
 
-class AboutIntent       extends Intent {}
-class EscapeIntent      extends Intent {}
-class NewDbFileIntent   extends Intent {}
-class OpenDbFileIntent  extends Intent {}
-class SaveNoteIntent    extends Intent {}
-class CloseDbFileIntent extends Intent {}
-class CloseAppIntent    extends Intent {}
+class NewDbFileIntent    extends Intent {}
+class OpenDbFileIntent   extends Intent {}
+class CloseDbFileIntent  extends Intent {}
+class NewNoteIntent      extends Intent {}
+class SaveNoteIntent     extends Intent {}
+class EscapeIntent       extends Intent {}
+class GlobalSearchIntent extends Intent {}
+class AboutIntent        extends Intent {}
+class CloseAppIntent     extends Intent {}
