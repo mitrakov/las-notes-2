@@ -16,7 +16,7 @@ final class TheModel extends Model {
   String? get currentPath => _currentPath;
   List<String> get recentFiles => Settings.local.recentFiles;
   bool get showArchive => Settings.local.showArchive;
-  set showArchive(bool value) => Settings.local.showArchive = value;
+  Future<void> setShowArchive(bool v) async => await Settings.local.setShowArchive(v);
 
   void openFile(String path) async {
     if (File(path).existsSync()) {

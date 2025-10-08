@@ -125,7 +125,7 @@ class _MainState extends State<Main> {
             CheckboxListTile(
               title: const Text("Show archive"),
               value: model.showArchive,
-              onChanged: (v) => model.showArchive = v ?? false,
+              onChanged: (v) => model.setShowArchive(v ?? false),
               controlAffinity: ListTileControlAffinity.leading,
             ),
             const SizedBox(height: 20,),
