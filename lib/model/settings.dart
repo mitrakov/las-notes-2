@@ -12,8 +12,11 @@ class Settings {
   }
 
   // show archives
-  bool get showArchive    => _preferences!.getBool("_SHOW_ARCHIVE") ?? false;
-  Future<void> setShowArchive(bool v) async => await _preferences!.setBool("_SHOW_ARCHIVE", v);
+  bool get showArchive => _preferences!.getBool("_SHOW_ARCHIVE") ?? false;
+  Future<void> setShowArchive(bool v) async {
+    if (v != showArchive)
+      await _preferences!.setBool("_SHOW_ARCHIVE", v);
+  }
 
   // recent files
   List<String> get recentFiles => _preferences!.getStringList("_RECENT_FILES") ?? [];
