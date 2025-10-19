@@ -9,8 +9,11 @@ class SQLiteDatabase {
 
   Future<void> openDb(String path) async {
     await closeDb();
-    _db = await openDatabase(path, onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"));
-    await _updateSchemaIfRequired();
+    _db = await openDatabase(path,
+      version: _GLOBAL_SCHEMA_VERSION,
+      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
+      onUpgrade: _updateSchemaIfRequired
+    );
   }
 
   Future<void> closeDb() async {
@@ -23,51 +26,56 @@ class SQLiteDatabase {
   }
 
   Future<void> createDb(String path) async {
-    await openDb(path);
-    await _db?.transaction((tx) async {
-      tx.execute("""
-      CREATE TABLE IF NOT EXISTS note (
-        note_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        author VARCHAR(64) NOT NULL DEFAULT '',
-        client VARCHAR(255) NOT NULL DEFAULT '',
-        user_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        colour INTEGER NOT NULL DEFAULT 16777215,
-        rank TINYINT NOT NULL DEFAULT 0,
-        is_visible BOOLEAN NOT NULL DEFAULT true,
-        is_favourite BOOLEAN NOT NULL DEFAULT false,
-        is_deleted BOOLEAN NOT NULL DEFAULT false,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE VIRTUAL TABLE IF NOT EXISTS notedata USING FTS5(data);
-      CREATE TABLE IF NOT EXISTS tag (
-        tag_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        name VARCHAR(64) UNIQUE NOT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS image (
-        guid UUID PRIMARY KEY NOT NULL,
-        data BLOB NOT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS note_to_tag (
-        note_id INTEGER NOT NULL REFERENCES note (note_id) ON UPDATE RESTRICT ON DELETE CASCADE,
-        tag_id  INTEGER NOT NULL REFERENCES tag (tag_id) ON UPDATE RESTRICT ON DELETE CASCADE,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (note_id, tag_id)
-      );
-      CREATE TABLE IF NOT EXISTS metadata (
-        key VARCHAR(64) PRIMARY KEY NOT NULL,
-        value VARCHAR(255) NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      PRAGMA user_version=$_GLOBAL_SCHEMA_VERSION;
-      """);
-    });
+    await closeDb();
+    _db = await openDatabase(path,
+      version: _GLOBAL_SCHEMA_VERSION,
+      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
+      onCreate: (db, version) async {
+        await db.transaction((tx) async {
+          tx.execute("""
+            CREATE TABLE IF NOT EXISTS note (
+              note_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+              author VARCHAR(64) NOT NULL DEFAULT '',
+              client VARCHAR(255) NOT NULL DEFAULT '',
+              user_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              colour INTEGER NOT NULL DEFAULT 16777215,
+              rank TINYINT NOT NULL DEFAULT 0,
+              is_visible BOOLEAN NOT NULL DEFAULT true,
+              is_favourite BOOLEAN NOT NULL DEFAULT false,
+              is_deleted BOOLEAN NOT NULL DEFAULT false,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );"""
+          );
+          tx.execute("CREATE VIRTUAL TABLE IF NOT EXISTS notedata USING FTS5(data);");
+          tx.execute("""CREATE TABLE IF NOT EXISTS tag (
+            tag_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            name VARCHAR(64) UNIQUE NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );""");
+          tx.execute("""CREATE TABLE IF NOT EXISTS image (
+            guid UUID PRIMARY KEY NOT NULL,
+            data BLOB NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );""");
+          tx.execute("""CREATE TABLE IF NOT EXISTS note_to_tag (
+            note_id INTEGER NOT NULL REFERENCES note (note_id) ON UPDATE RESTRICT ON DELETE CASCADE,
+            tag_id  INTEGER NOT NULL REFERENCES tag (tag_id) ON UPDATE RESTRICT ON DELETE CASCADE,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (note_id, tag_id)
+          );""");
+          tx.execute("""CREATE TABLE IF NOT EXISTS metadata (
+            key VARCHAR(64) PRIMARY KEY NOT NULL,
+            value VARCHAR(255) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );""");
+        });
+      }
+    );
   }
 
   /// returns new generated note_id > 0
@@ -218,18 +226,11 @@ class SQLiteDatabase {
     } else await _db?.rawDelete("DELETE FROM metadata WHERE key = ?;", [key]);
   }
 
-  Future<int> _getSchemaVersion() async {
-    final valueOpt = (await _db!.rawQuery("PRAGMA user_version")).firstOrNull;
-    final value = valueOpt?.values.firstOrNull?.toString();
-    return int.tryParse(value ?? "0") ?? 0; // for real users, min = 3
-  }
-
-  Future<void> _updateSchemaIfRequired() async {
-    final dbVersion = await _getSchemaVersion();
-
-    if (dbVersion < _GLOBAL_SCHEMA_VERSION) {
+  Future<void> _updateSchemaIfRequired(Database db, int oldVersion, int newVersion) async {
+    print("Updating schema: $oldVersion -> $newVersion");
+    if (oldVersion < _GLOBAL_SCHEMA_VERSION) {
       _db!.transaction((tx) async {
-        if (dbVersion < 4) { // new "metadata" table
+        if (oldVersion < 4) { // new "metadata" table
           await tx.execute("""
           CREATE TABLE IF NOT EXISTS metadata (
             key VARCHAR(64) PRIMARY KEY NOT NULL,
@@ -240,7 +241,7 @@ class SQLiteDatabase {
           """);
           print("Migration 3 -> 4 done");
         }
-        if (dbVersion < 5) { // bug fix to trim " tagName "
+        if (oldVersion < 5) { // bug fix to trim " tagName "
           await tx.execute("UPDATE tag SET name = (trim(name) || '_bugfix_tag_id_' || tag_id) WHERE name != trim(name);");
           print("Migration 4 -> 5 done");
         }
