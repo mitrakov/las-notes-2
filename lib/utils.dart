@@ -3,7 +3,7 @@ import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 class Utils {
   static Iterable<String> split(String str) => str.split(",").map((s) => s.trim()).where((s) => s.isNotEmpty);
 
-  static void showAlert(String title, String text, IconStyle icon, AlertButtonStyle buttons, Function onYes, onNo) async {
+  static Future<void> showAlert(String title, String text, IconStyle icon, AlertButtonStyle buttons, Function onYes, onNo) async {
     final result = await FlutterPlatformAlert.showAlert(
       windowTitle: title,
       text: text,

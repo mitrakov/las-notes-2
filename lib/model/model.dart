@@ -16,7 +16,7 @@ final class TheModel extends Model {
   String? get currentPath => _currentPath;
   List<String> get recentFiles => Settings.local.recentFiles;
   bool get showArchive => Settings.local.showArchive;
-  Future<void> setShowArchive(bool v) async => await Settings.local.setShowArchive(v);
+  Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
   void openFile(String path) async {
     if (File(path).existsSync()) {
@@ -69,42 +69,37 @@ final class TheModel extends Model {
     notifyListeners();
   }
 
-  Future<Iterable<String>> getTags() => _db.getTags();
+  Future<Iterable<String>> getTags() => _db.getTags(showArchive);
 
-  Future<Iterable<Note>> getAllNotes(bool showArchive) => _db.getAllNotes(showArchive);
+  Future<Iterable<Note>> getAllNotes() => _db.getAllNotes(showArchive);
 
-  Future<Iterable<Note>> getRandomNotes(bool showArchive, int max) => _db.getRandomNotes(showArchive, max);
+  Future<Iterable<Note>> getRandomNotes(int max) => _db.getRandomNotes(showArchive, max);
 
   Future<Note?> searchById(int noteId) => _db.searchByID(noteId);
 
-  FutureOr<Iterable<Note>> searchByTag(String tag, bool showArchive) {
+  FutureOr<Iterable<Note>> searchByTag(String tag) {
     if (tag.trim().isEmpty) return [];
     return _db.searchByTag(tag, showArchive);
   }
 
-  FutureOr<Iterable<Note>> searchByKeyword(String word, bool showArchive) {
+  FutureOr<Iterable<Note>> searchByKeyword(String word) {
     if (word.trim().isEmpty) return [];
     return _db.searchByKeyword(word, showArchive);
   }
 
-  Future<void> archiveNoteById(int noteId) async {
+  Future<void> archiveNoteById(int noteId) {
     const text = "Are you sure you want to archive this note?";
-    Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, () async {
+    return Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, () async {
       await _db.softDeleteNote(noteId, true);
-      notifyListeners(); // TODO: note is still shown on iOS
     }, (){});
   }
 
-  Future<void> restoreNoteById(int noteId) async {
-    await _db.softDeleteNote(noteId, false);
-    notifyListeners();
-  }
+  Future<void> restoreNoteById(int noteId) => _db.softDeleteNote(noteId, false);
 
-  Future<void> deleteNoteById(int noteId) async {
+  Future<void> deleteNoteById(int noteId) {
     const text = "Are you sure you want to delete this note? It cannot be undone";
-    Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, () async {
+    return Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, () async {
       await _db.deleteNote(noteId);
-      notifyListeners(); // TODO: note is still shown on iOS
     }, (){});
   }
 

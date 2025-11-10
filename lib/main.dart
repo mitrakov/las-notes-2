@@ -25,7 +25,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
   
   // bugs in Sqflite library:
-  // 1. https://stackoverflow.com/q/76158800         // enable FFI suport for Windows/Linux
+  // 1. https://stackoverflow.com/q/76158800         // enable FFI support for Windows/Linux
   // 2. https://stackoverflow.com/q/75837229         // add precompiled binary for Win64 from https://sqlite.org/download.html
   if (Platform.isWindows) { // TODO check Linux
     sqfliteFfiInit();
@@ -66,6 +66,8 @@ class _MainState extends State<Main> {
 
   final _currentText = TextEditingController(); // main text in add/edit mode
   final _currentTags = TextEditingController(); // comma-separated tags in the text field
+  final _globalSearch = TextEditingController();// text in "Global search" field; only for mobile app
+
   int? _currentNoteId;                          // if present, noteID in edit mode (otherwise NEW_NOTE mode)
   var _oldTags = "";                            // old comma-separated tags for edit mode (to calc tags diff)
   Iterable<Note> _notes = [];                   // in view mode, DB notes array for markdown view
@@ -107,14 +109,15 @@ class _MainState extends State<Main> {
         ],
       ),
       body: model.currentPath == null
-          ? const Center(child: Text("Welcome!\nOpen a DB file"))
-          : Padding(padding: const EdgeInsets.all(8.0), child: _makeMainAreaMobile(model)),
+        ? const Center(child: Text("Welcome!\nOpen a DB file"))
+        : Padding(padding: const EdgeInsets.all(8.0), child: _makeMainAreaMobile(model)),
       drawer: Drawer(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(children: [
             const SizedBox(height: 50),
             TextField(
+              controller: _globalSearch, // only for Mobile app to keep the text after "Navigator.pop()"
               focusNode: _focusNodeSearch,
               decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
               onSubmitted: (s) {
@@ -125,32 +128,33 @@ class _MainState extends State<Main> {
             CheckboxListTile(
               title: const Text("Show archive"),
               value: model.showArchive,
-              onChanged: (v) => model.setShowArchive(v ?? false),
+              onChanged: (v) {
+                model.setShowArchive(v ?? false);
+                _setReadMode(_search, _searchMode);
+                Navigator.pop(context);
+              },
               controlAffinity: ListTileControlAffinity.leading,
             ),
-            const SizedBox(height: 20,),
+            const SizedBox(height: 10),
             const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             FutureBuilder(future: model.getTags(), builder: (context, snapshot) {
               if (snapshot.hasData)
                 return Expanded(child: ListView(children: snapshot.data!.map((tag) =>
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: OutlinedButton(
-                      style: ButtonStyle(
-                        alignment: Alignment.centerLeft,
-                        backgroundColor: MaterialStateProperty.all(Colors.brown[50])
-                      ),
-                      child: Text(tag),
-                      onPressed: () {
-                        _setReadMode(tag, SearchMode.tag);
-                        Navigator.pop(context);
-                      },
+                  OutlinedButton(
+                    style: ButtonStyle(
+                      alignment: Alignment.centerLeft,
+                      backgroundColor: MaterialStateProperty.all(Colors.brown[50])
                     ),
+                    child: Text(tag),
+                    onPressed: () {
+                      _setReadMode(tag, SearchMode.tag);
+                      Navigator.pop(context);
+                    },
                   ),
                 ).toList()));
               else return const CircularProgressIndicator(color: Colors.lime);
-            },)
-          ],),
+            })
+          ]),
         ),
       ),
       floatingActionButton: Column(
@@ -231,7 +235,7 @@ class _MainState extends State<Main> {
           label: "",
           menus: [
             PlatformMenuItemGroup(members: [
-              PlatformMenuItem(label: "About Tommynotes", onSelected: _showAboutDialog),
+              PlatformMenuItem(label: "About Las Notes", onSelected: _showAboutDialog),
             ]),
             PlatformMenuItem(label: "Quit", onSelected: () => exit(0)),
           ],
@@ -274,7 +278,7 @@ class _MainState extends State<Main> {
             AboutIntent:        CallbackAction(onInvoke: (_) => _showAboutDialog()),
             CloseAppIntent:     CallbackAction(onInvoke: (_) => exit(0)),
           },
-          child: Focus(               // needed for Shortcuts TODO RTFM about FocusNode
+          child: Focus(               // needed for Shortcuts
             autofocus: true,          // focused by default
             focusNode: _focusNodeGlobal,
             child: Scaffold(
@@ -295,10 +299,7 @@ class _MainState extends State<Main> {
                                   backgroundColor: MaterialStateProperty.all(Colors.brown[50])
                                 ),
                                 child: Text(tag),
-                                onPressed: () {
-                                  _setReadMode(tag, SearchMode.tag);
-                                  /// Navigator.pop(context);
-                                },
+                                onPressed: () => _setReadMode(tag, SearchMode.tag),
                               ),
                             ),
                           )).toList();
@@ -319,6 +320,15 @@ class _MainState extends State<Main> {
                                   ),
                                 ),
                               ]),
+                              CheckboxListTile(
+                                title: const Text("Show archive"),
+                                value: model.showArchive,
+                                onChanged: (v) {
+                                  model.setShowArchive(v ?? false);
+                                  _setReadMode(_search, _searchMode);
+                                },
+                                controlAffinity: ListTileControlAffinity.leading,
+                              ),
                               const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                               ...tags,
                             ]);
@@ -367,7 +377,7 @@ class _MainState extends State<Main> {
                                   hintText: "Tag1, Tag2, ..."
                                 ),
                                 onEditingComplete: _saveNote,
-                              )
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -377,7 +387,8 @@ class _MainState extends State<Main> {
                             onPressed: _saveNote,
                             child: Text(_currentNoteId == null ? "Save" : "Update",
                               style: const TextStyle(fontSize: 18),
-                            )),
+                            ),
+                          ),
                         ]),
                       )],
                     ),
@@ -395,9 +406,12 @@ class _MainState extends State<Main> {
     switch (_editorMode) {
       case EditorMode.read:
         return ListView(children: _notes.map((note) => TrixContainer(child: GestureDetector(
-          onLongPress: () => _contextMenu(note), // doesn't work on iOS (=> also use DoubleTap)
-          onDoubleTap: () => _contextMenu(note),
-          child: MarkdownWidget(data: note.data, shrinkWrap: true)))).toList()
+          onLongPress: () => _contextMenuMobile(note), // doesn't work on iOS (=> also use DoubleTap)
+          onDoubleTap: () => _contextMenuMobile(note),
+          child: Opacity(
+            opacity: note.isDeleted ? 0.67 : 1,
+            child: MarkdownWidget(data: note.data, shrinkWrap: true),
+          )))).toList()
         );
       case EditorMode.edit:
         return Column(children: [
@@ -433,8 +447,22 @@ class _MainState extends State<Main> {
     }
   }
 
-  void _contextMenu(Note note) async {
+  void _contextMenuMobile(Note note) async {
     final model = ScopedModel.of<TheModel>(context);
+
+    // archived notes
+    if (note.isDeleted) {
+      const h1 = "Restore";
+      const msg = "Restore note from archive?";
+      const style = AlertButtonStyle.yesNo;
+      await Utils.showAlert(h1, msg, IconStyle.information, style, () async {
+        await model.restoreNoteById(note.id);
+        _setReadMode(_search, _searchMode);
+      }, (){});
+      return;
+    }
+
+    // regular notes
     final result = await FlutterPlatformAlert.showCustomAlert(
       windowTitle: "Update note",
       text: "${note.data.substring(0, min(note.data.length, 25))}...",
@@ -443,9 +471,8 @@ class _MainState extends State<Main> {
       neutralButtonTitle: "Archive",
       negativeButtonTitle: "Delete",
       options: PlatformAlertOptions(
-        macos: MacosAlertOptions(isNegativeActionDestructive: true),
         ios: IosAlertOptions(negativeButtonStyle: IosButtonStyle.destructive),
-        // TODO other platforms
+        // TODO Android?
       ),
     );
     switch (result) {
@@ -453,10 +480,12 @@ class _MainState extends State<Main> {
         _setEditMode(note.id, note.data, note.tags);
         break;
       case CustomButton.neutralButton:
-        model.archiveNoteById(note.id);
+        await model.archiveNoteById(note.id);
+        _setReadMode(_search, _searchMode);
         break;
       case CustomButton.negativeButton:
-        model.deleteNoteById(note.id);
+        await model.deleteNoteById(note.id);
+        _setReadMode(_search, _searchMode);
         break;
       default:
     }
@@ -466,9 +495,12 @@ class _MainState extends State<Main> {
     const editTitle = "Edit note";
     const archiveTitle = "Archive note";
     const deleteTitle = "Delete note";
+    const restoreTitle = "Restore from archive";
     final model = ScopedModel.of<TheModel>(context);
     final children = _notes.map((note) => ContextMenuRegion(
-      menuItems: [MenuItem(title: editTitle), MenuItem(title: archiveTitle), MenuItem(title: deleteTitle)],
+      menuItems: note.isDeleted
+        ? [MenuItem(title: restoreTitle)]
+        : [MenuItem(title: editTitle), MenuItem(title: archiveTitle), MenuItem(title: deleteTitle)],
       onItemSelected: (item) async { // MenuItem::onSelected doesn't work
         switch (item.title) {
           case editTitle:
@@ -476,14 +508,23 @@ class _MainState extends State<Main> {
             break;
           case archiveTitle:
             await model.archiveNoteById(note.id);
+            _setReadMode(_search, _searchMode);
             break;
           case deleteTitle:
             await model.deleteNoteById(note.id);
+            _setReadMode(_search, _searchMode);
+            break;
+          case restoreTitle:
+            await model.restoreNoteById(note.id);
+            _setReadMode(_search, _searchMode);
             break;
           default:
         }
       },
-      child: TrixContainer(child: MarkdownWidget(data: note.data, shrinkWrap: true)),
+      child: TrixContainer(child: Opacity(
+        opacity: note.isDeleted ? 0.67 : 1,
+        child: MarkdownWidget(data: note.data, shrinkWrap: true),
+      )),
     )).toList();
     return ListView(children: children);
   }
@@ -523,7 +564,7 @@ class _MainState extends State<Main> {
     }
   }
 
-  void _setEditMode(int? noteId, String text, String tags) async {
+  void _setEditMode(int? noteId, String text, String tags) {
     setState(() {
       _currentText.text = text;
       _currentTags.text = tags;
@@ -537,14 +578,14 @@ class _MainState extends State<Main> {
     _focusNodeText.requestFocus();
   }
 
-  Future<void> _setReadMode(String search, SearchMode by) async {
+  void _setReadMode(String search, SearchMode by) async {
     final model = ScopedModel.of<TheModel>(context);
     final Iterable<Note> notes =
-      by == SearchMode.all     ? await model.getAllNotes(model.showArchive) :
-      by == SearchMode.tag     ? await model.searchByTag(search, model.showArchive) :
-      by == SearchMode.keyword ? await model.searchByKeyword(search, model.showArchive) :
+      by == SearchMode.all     ? await model.getAllNotes() :
+      by == SearchMode.tag     ? await model.searchByTag(search) :
+      by == SearchMode.keyword ? await model.searchByKeyword(search) :
       by == SearchMode.id      ? await model.searchById(int.tryParse(search) ?? 0).then((note) => [if (note != null) note]) :
-      by == SearchMode.random  ? await model.getRandomNotes(model.showArchive, 10) : [];
+      by == SearchMode.random  ? await model.getRandomNotes(10) : [];
 
     setState(() {
       _currentText.text = "";

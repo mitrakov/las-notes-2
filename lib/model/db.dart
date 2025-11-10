@@ -104,7 +104,7 @@ class SQLiteDatabase {
     await _db?.transaction((tx) async {
       tx.rawDelete("DELETE FROM note     WHERE note_id = ?;", [noteId]);
       tx.rawDelete("DELETE FROM notedata WHERE rowid = ?;", [noteId]);
-      tx.rawDelete("DELETE FROM tag      WHERE tag_id NOT IN (SELECT DISTINCT tag_id FROM note_to_tag);");
+      tx.rawDelete("DELETE FROM tag      WHERE tag_id NOT IN (SELECT DISTINCT tag_id FROM note_to_tag);"); // rm unused tags
     });
   }
 
@@ -137,8 +137,18 @@ class SQLiteDatabase {
     return dbResult?.map(toNote) ?? [];
   }
 
-  Future<Iterable<String>> getTags() async {
-    final dbResult = await _db?.rawQuery("SELECT name FROM tag ORDER BY name;"); // TODO don't show archived
+  Future<Iterable<String>> getTags(bool fetchDeleted) async {
+    final sql = fetchDeleted
+      ? "SELECT name FROM tag ORDER BY name;"    // all tags
+      : """
+        SELECT name
+        FROM note
+        INNER JOIN note_to_tag USING (note_id)
+        INNER JOIN tag         USING (tag_id)
+        WHERE NOT is_deleted
+        GROUP BY name
+        ORDER BY name;""";                       // hide tags from "archived" notes
+    final dbResult = await _db?.rawQuery(sql);
     return dbResult?.map((e) => e["name"].toString()) ?? [];
   }
 
@@ -210,7 +220,7 @@ class SQLiteDatabase {
     await _db?.transaction((tx) async {
       final args = [noteId, ...tags];
       tx.rawDelete("DELETE FROM note_to_tag WHERE note_id = ? AND tag_id IN (SELECT tag_id FROM tag WHERE name IN ($IN));", args);
-      tx.rawDelete("DELETE FROM tag WHERE tag_id NOT IN (SELECT DISTINCT tag_id FROM note_to_tag);");
+      tx.rawDelete("DELETE FROM tag WHERE tag_id NOT IN (SELECT DISTINCT tag_id FROM note_to_tag);"); // rm unused tags
     });
   }
 
