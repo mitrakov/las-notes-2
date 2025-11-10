@@ -30,7 +30,7 @@ Build for MacOS:
 flutter build macos
 xCode: Product -> Destination -> Any Mac (Apple Silicon, Intel)
 xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
-copy "Las Notes.app" to _installer/macos/App
+copy "Las Notes.app" to "_installer/macos/App"
 run _installer/macos/build-dmg.sh
 
 Build for iOS:
@@ -40,7 +40,9 @@ xCode: Product -> Archive -> Distribute App -> Release Testing
 
 Build for Windows:
 flutter build windows
-_installer/windows -> Run "inno-setup.iss" with Inno Setup utility
+copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
+make sure to include sqlite3.dll
+run "_installer\windows\inno-setup.iss" with Inno Setup Compiler 6.4.0
 */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
