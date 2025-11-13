@@ -1,4 +1,5 @@
 // ignore_for_file: curly_braces_in_flow_control_structures, use_key_in_widget_constructors, sort_child_properties_last
+import 'dart:ffi' show DynamicLibrary;
 import 'dart:io';
 import 'dart:math';
 import 'package:path/path.dart' show basename;
@@ -18,6 +19,7 @@ import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 import 'package:lasnotes/widgets/trixiconbutton.dart';
 import 'package:lasnotes/utils.dart';
+import 'package:sqlite3/open.dart';
 
 bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
@@ -52,7 +54,7 @@ void main() async {
   // 2. https://stackoverflow.com/q/75837229         // add precompiled binary for Win64 from https://sqlite.org/download.html
   if (Platform.isWindows) { // TODO check Linux
     sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    databaseFactory = createDatabaseFactoryFfi(ffiInit: ffiInit);
   }
 
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have
@@ -61,6 +63,49 @@ void main() async {
 
   runApp(ScopedModel(model: model, child: LaApp(model)));
 }
+
+void ffiInit() {
+  open.overrideForAll(sqlcipherOpen);
+}
+
+DynamicLibrary sqlcipherOpen() {
+  // Taken from https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart#L24
+  if (Platform.isLinux || Platform.isAndroid) {
+    try {
+      return DynamicLibrary.open('libsqlcipher.so');
+    } catch (_) {
+      if (Platform.isAndroid) {
+        // On some (especially old) Android devices, we somehow can't dlopen
+        // libraries shipped with the apk. We need to find the full path of the
+        // library (/data/data/<id>/lib/libsqlite3.so) and open that one.
+        // For details, see https://github.com/simolus3/moor/issues/420
+        final appIdAsBytes = File('/proc/self/cmdline').readAsBytesSync();
+
+        // app id ends with the first \0 character in here.
+        final endOfAppId = max(appIdAsBytes.indexOf(0), 0);
+        final appId = String.fromCharCodes(appIdAsBytes.sublist(0, endOfAppId));
+
+        return DynamicLibrary.open('/data/data/$appId/lib/libsqlcipher.so');
+      }
+
+      rethrow;
+    }
+  }
+  if (Platform.isIOS) {
+    return DynamicLibrary.process();
+  }
+  if (Platform.isMacOS) {
+    // TODO: Unsure what the path is in macos
+    return DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
+  }
+  if (Platform.isWindows) {
+    // TODO: This dll should be the one that gets generated after compiling SQLcipher on Windows
+    return DynamicLibrary.open('sqlite3.dll');
+  }
+
+  throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
+}
+
 
 class LaApp extends StatelessWidget {
   final TheModel model;

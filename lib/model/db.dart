@@ -11,7 +11,7 @@ class SQLiteDatabase {
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
+      onConfigure: (db) => db.execute("PRAGMA KEY='555';"),
       onUpgrade: _updateSchemaIfRequired
     );
   }
