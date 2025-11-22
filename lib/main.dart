@@ -100,7 +100,7 @@ DynamicLibrary sqlcipherOpen() {
   }
   if (Platform.isWindows) {
     // TODO: This dll should be the one that gets generated after compiling SQLcipher on Windows
-    return DynamicLibrary.open('sqlite3.dll');
+    return DynamicLibrary.open('C:/Users/Tommy/workspace/sqlite3.dll');
   }
 
   throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
