@@ -19,7 +19,7 @@ import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 import 'package:lasnotes/widgets/trixiconbutton.dart';
 import 'package:lasnotes/utils.dart';
-import 'package:sqlite3/open.dart';
+import 'package:sqlite3/open.dart' show open;
 
 bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
@@ -29,22 +29,22 @@ Build:
 - bump version in _installer/windows/inno-setup.iss
 
 Build for MacOS:
-flutter build macos
-xCode: Product -> Destination -> Any Mac (Apple Silicon, Intel)
-xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
-copy "Las Notes.app" to "_installer/macos/App"
-run _installer/macos/build-dmg.sh
+  flutter build macos
+  xCode: Product -> Destination -> Any Mac (Apple Silicon, Intel)
+  xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
+  copy "Las Notes.app" to "_installer/macos/App"
+  run _installer/macos/build-dmg.sh
 
 Build for iOS:
-flutter build ios
-xCode: Product -> Destination -> Any iOS Device (arm64)
-xCode: Product -> Archive -> Distribute App -> Release Testing
+  flutter build ios
+  xCode: Product -> Destination -> Any iOS Device (arm64)
+  xCode: Product -> Archive -> Distribute App -> Release Testing
 
 Build for Windows:
-flutter build windows
-copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
-make sure to include sqlite3.dll
-run "_installer\windows\inno-setup.iss" with Inno Setup Compiler 6.4.0
+  flutter build windows
+  copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
+  make sure to include sqlite3.dll
+  run "_installer\windows\inno-setup.iss" with Inno Setup Compiler 6.4.0
 */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
@@ -273,7 +273,7 @@ class _MainState extends State<Main> {
                 heroTag: "openFile",
                 child: const Icon(Icons.open_in_new, size: 32),
                 backgroundColor: Colors.blueAccent[100],
-                onPressed: model.openFileWithDialog,
+                onPressed: () => model.openFileWithDialog(context),
               ),
             ),
           ),
@@ -312,19 +312,21 @@ class _MainState extends State<Main> {
           label: "File",
           menus: [
             PlatformMenu(label: "Open Recent", menus: settings.recentFiles.map((path) =>
-              PlatformMenuItem(label: path, onSelected: () => model.openFile(path))
+              PlatformMenuItem(label: path, onSelected: () => model.openFile(context, path))
             ).toList()),
             PlatformMenuItemGroup(members: [
-              PlatformMenuItem(label: "New File", onSelected: model.newFile),
-              PlatformMenuItem(label: "Open...", onSelected: model.openFileWithDialog),
+              PlatformMenuItem(label: "New DB File", onSelected: () => model.newFile(context, false)),
+              PlatformMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, true)),
+              PlatformMenuItem(label: "Open...", onSelected: () => model.openFileWithDialog(context)),
             ]),
-            PlatformMenuItem(label: "Close File", onSelected: model.closeFile),
+            PlatformMenuItem(label: "Close DB File", onSelected: model.closeFile),
           ],
         ),
       ],
       child: Shortcuts(
         shortcuts: {
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS, shift: true): NewDbFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyE, meta: isMacOS, control: !isMacOS, shift: true): NewDbxFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS):              OpenDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyW, meta: isMacOS, control: !isMacOS):              CloseDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS):              NewNoteIntent(),
@@ -336,8 +338,9 @@ class _MainState extends State<Main> {
         },
         child: Actions(
           actions: {
-            NewDbFileIntent:    CallbackAction(onInvoke: (_) => model.newFile()),
-            OpenDbFileIntent:   CallbackAction(onInvoke: (_) => model.openFileWithDialog()),
+            NewDbFileIntent:    CallbackAction(onInvoke: (_) => model.newFile(context, false)),
+            NewDbxFileIntent:   CallbackAction(onInvoke: (_) => model.newFile(context, true)),
+            OpenDbFileIntent:   CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
             CloseDbFileIntent:  CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:      CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
             SaveNoteIntent:     CallbackAction(onInvoke: (_) => _saveNote()),
@@ -680,6 +683,7 @@ enum EditorMode { read, edit }
 enum SearchMode { all, tag, keyword, id, random }
 
 class NewDbFileIntent    extends Intent {}
+class NewDbxFileIntent   extends Intent {}
 class OpenDbFileIntent   extends Intent {}
 class CloseDbFileIntent  extends Intent {}
 class NewNoteIntent      extends Intent {}

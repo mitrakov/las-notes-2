@@ -1,13 +1,16 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:lasnotes/model/db.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/settings.dart';
+import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:lasnotes/utils.dart';
+import 'package:path/path.dart' as p;
 
 final class TheModel extends Model {
   final _db = SQLiteDatabase();
@@ -18,48 +21,85 @@ final class TheModel extends Model {
   bool get showArchive => Settings.local.showArchive;
   Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
-  void openFile(String path) async {
+  void openFile(BuildContext context, String path) async {
     if (File(path).existsSync()) {
-      print("Opening file $path");
-      await _db.openDb(path);
+      final ext = p.extension(path);
+      switch (ext) {
+        case ".db":                              // regular
+          print("Opening regular DB file $path");
+          await _db.openDb(path, null);
+          break;
+        case ".dbx":                             // encrypted
+          final password = await showInputBox(context, "Enter password", hint: "Password");
+          if (password == null) return;
+          print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
+          try {
+            await _db.openDb(path, password);
+          } catch (e) {
+            const msg = "Cannot open encrypted DB file. Wrong password?";
+            FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
+            return;
+          }
+          break;
+        default:
+          return _showExtensionError(ext);
+      }
+
       _currentPath = path;
       notifyListeners();
-      _addToRecentFilesList(path);
+      Settings.local.addToRecentFiles(path);
     } else {
       Utils.showAlert("Error", "File not found:\n$path", IconStyle.error, AlertButtonStyle.ok, (){}, (){});
-      _removeFromRecentFilesList(path);
+      Settings.local.removeFromRecentFiles(path);
     }
   }
 
-  void openFileWithDialog() async {
+  void openFileWithDialog(BuildContext context) async {
     // set FileType.any, because "FileType.any, allowedExtensions: ["db"]" doesn't work on iOS
+    // TODO if iOS
     final result = (await FilePicker.platform.pickFiles(dialogTitle: "Open a DB file", type: FileType.any, lockParentWindow: true));
     final path = result?.files.firstOrNull?.path;
     if (path != null)
-      openFile(path);
+      openFile(context, path);
   }
 
-  void newFile() async {
+  void newFile(BuildContext context, bool encrypted) async {
     final path = await FilePicker.platform.saveFile(
-      dialogTitle: "Create a new DB file",
-      fileName: "mydb.db",
+      dialogTitle: encrypted ? "Create a new encrypted DB file" : "Create a new DB file",
+      fileName: encrypted ? "mydb.dbx" : "mydb.db",
       type: FileType.custom,
-      allowedExtensions: ["db"],
+      allowedExtensions: encrypted ? ["dbx"] : ["db"],
       lockParentWindow: true
     );
     if (path != null) {
       final file = File(path);
       if (file.existsSync()) {
-        // TODO check "replace file?" on all platforms
+        // TODO check "replace file?" on all platforms; probably is to remove this code section
         await _db.closeDb();
         file.deleteSync();
       }
 
-      print("Creating file $path");
-      await _db.createDb(path);
+      final ext = p.extension(path);
+      switch (ext) {
+        case ".db":                              // regular
+          print("Creating regular DB file $path");
+          await _db.createDb(path, null);
+          break;
+        case ".dbx":                             // encrypted
+          const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
+          await FlutterPlatformAlert.showAlert(windowTitle: "DB encryption", text: msg, iconStyle: IconStyle.exclamation);
+          final password = await showInputBox(context, "Enter password", hint: "Password");
+          if (password == null) return;
+          print("Creating encrypted DB file $path");
+          await _db.createDb(path, password);
+          break;
+        default:
+          return _showExtensionError(ext);
+      }
+
       _currentPath = path;
       notifyListeners();
-      _addToRecentFilesList(path);
+      Settings.local.addToRecentFiles(path);
     }
   }
 
@@ -138,11 +178,8 @@ final class TheModel extends Model {
     await _db.linkTagsToNote(noteId, addTags);
   }
 
-  void _addToRecentFilesList(String item) {
-    Settings.local.addToRecentFiles(item);
-  }
-
-  void _removeFromRecentFilesList(String item) {
-    Settings.local.removeFromRecentFiles(item);
+  void _showExtensionError(String ext) {
+    final msg = "File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)";
+    Utils.showAlert("Error", msg, IconStyle.error, AlertButtonStyle.ok, (){}, (){});
   }
 }

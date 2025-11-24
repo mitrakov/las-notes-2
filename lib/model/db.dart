@@ -1,5 +1,5 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:lasnotes/model/note.dart';
 
 // IMPORTANT! Remove f*cking sandbox in MacOS and iOS .*entitlements files
@@ -7,12 +7,13 @@ class SQLiteDatabase {
   static const _GLOBAL_SCHEMA_VERSION = 5;
   Database? _db;
 
-  Future<void> openDb(String path) async {
+  Future<void> openDb(String path, String? password) async { // TODO params in {}
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; PRAGMA KEY='555';"),
-      onUpgrade: _updateSchemaIfRequired
+      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
+      onUpgrade: _updateSchemaIfRequired,
+      password: password,
     );
   }
 
@@ -25,7 +26,7 @@ class SQLiteDatabase {
     return _db?.isOpen ?? false;
   }
 
-  Future<void> createDb(String path) async {
+  Future<void> createDb(String path, String? password) async {
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
@@ -74,7 +75,8 @@ class SQLiteDatabase {
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
           );""");
         });
-      }
+      },
+      password: password,
     );
   }
 
