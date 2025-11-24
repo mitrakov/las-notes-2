@@ -7,7 +7,7 @@ class SQLiteDatabase {
   static const _GLOBAL_SCHEMA_VERSION = 5;
   Database? _db;
 
-  Future<void> openDb(String path, String? password) async { // TODO params in {}
+  Future<void> openDb(String path, {String? password}) async { // TODO params in {}
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
@@ -26,7 +26,7 @@ class SQLiteDatabase {
     return _db?.isOpen ?? false;
   }
 
-  Future<void> createDb(String path, String? password) async {
+  Future<void> createDb(String path, {String? password}) async {
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,

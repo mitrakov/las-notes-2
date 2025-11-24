@@ -27,14 +27,14 @@ final class TheModel extends Model {
       switch (ext) {
         case ".db":                              // regular
           print("Opening regular DB file $path");
-          await _db.openDb(path, null);
+          await _db.openDb(path);
           break;
         case ".dbx":                             // encrypted
           final password = await showInputBox(context, "Enter password", hint: "Password");
           if (password == null) return;
           print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
           try {
-            await _db.openDb(path, password);
+            await _db.openDb(path, password: password);
           } catch (e) {
             const msg = "Cannot open encrypted DB file. Wrong password?";
             FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
@@ -49,7 +49,7 @@ final class TheModel extends Model {
       notifyListeners();
       Settings.local.addToRecentFiles(path);
     } else {
-      Utils.showAlert("Error", "File not found:\n$path", IconStyle.error, AlertButtonStyle.ok, (){}, (){});
+      Utils.showAlert("Error", "File not found:\n$path", IconStyle.error, AlertButtonStyle.ok);
       Settings.local.removeFromRecentFiles(path);
     }
   }
@@ -59,7 +59,7 @@ final class TheModel extends Model {
     // TODO if iOS
     final result = (await FilePicker.platform.pickFiles(dialogTitle: "Open a DB file", type: FileType.any, lockParentWindow: true));
     final path = result?.files.firstOrNull?.path;
-    if (path != null)
+    if (path != null && context.mounted)
       openFile(context, path);
   }
 
@@ -83,15 +83,16 @@ final class TheModel extends Model {
       switch (ext) {
         case ".db":                              // regular
           print("Creating regular DB file $path");
-          await _db.createDb(path, null);
+          await _db.createDb(path);
           break;
         case ".dbx":                             // encrypted
           const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
           await FlutterPlatformAlert.showAlert(windowTitle: "DB encryption", text: msg, iconStyle: IconStyle.exclamation);
+          if (!context.mounted) return;
           final password = await showInputBox(context, "Enter password", hint: "Password");
           if (password == null) return;
           print("Creating encrypted DB file $path");
-          await _db.createDb(path, password);
+          await _db.createDb(path, password: password);
           break;
         default:
           return _showExtensionError(ext);
@@ -129,18 +130,18 @@ final class TheModel extends Model {
 
   Future<void> archiveNoteById(int noteId) {
     const text = "Are you sure you want to archive this note?";
-    return Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, () async {
+    return Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
-    }, (){});
+    });
   }
 
   Future<void> restoreNoteById(int noteId) => _db.softDeleteNote(noteId, false);
 
   Future<void> deleteNoteById(int noteId) {
     const text = "Are you sure you want to delete this note? It cannot be undone";
-    return Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, () async {
+    return Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, onYes: () async {
       await _db.deleteNote(noteId);
-    }, (){});
+    });
   }
 
   FutureOr<int?> saveNote(int? noteId, String data, String newTags, String oldTags) async {
@@ -149,7 +150,7 @@ final class TheModel extends Model {
     if (!_db.isConnected()) return null;
     if (data.trim().isEmpty) return null;
     if (tags.isEmpty) {
-      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", IconStyle.asterisk, AlertButtonStyle.ok, () {}, (){});
+      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", IconStyle.asterisk, AlertButtonStyle.ok);
       return null;
     }
 
@@ -157,13 +158,13 @@ final class TheModel extends Model {
       // UPDATE
       await _db.updateNote(noteId, data);
       await _updateTags(noteId, newTags, oldTags);
-      Utils.showAlert("Done", "Note updated", IconStyle.information, AlertButtonStyle.ok, () {}, (){});
+      Utils.showAlert("Done", "Note updated", IconStyle.information, AlertButtonStyle.ok);
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data);
       await _db.linkTagsToNote(newNoteId, tags);
-      Utils.showAlert("Done", "Note added", IconStyle.information, AlertButtonStyle.ok, () {}, (){});
+      Utils.showAlert("Done", "Note added", IconStyle.information, AlertButtonStyle.ok);
       return newNoteId;
     }
   }
@@ -180,6 +181,6 @@ final class TheModel extends Model {
 
   void _showExtensionError(String ext) {
     final msg = "File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)";
-    Utils.showAlert("Error", msg, IconStyle.error, AlertButtonStyle.ok, (){}, (){});
+    Utils.showAlert("Error", msg, IconStyle.error, AlertButtonStyle.ok);
   }
 }

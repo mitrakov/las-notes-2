@@ -1,9 +1,11 @@
+import 'dart:ui';
 import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 
 class Utils {
   static Iterable<String> split(String str) => str.split(",").map((s) => s.trim()).where((s) => s.isNotEmpty);
 
-  static Future<void> showAlert(String title, String text, IconStyle icon, AlertButtonStyle buttons, Function onYes, onNo) async {
+  static Future<void> showAlert(
+      String title, String text, IconStyle icon, AlertButtonStyle buttons, {VoidCallback? onYes, VoidCallback? onNo}) async {
     final result = await FlutterPlatformAlert.showAlert(
       windowTitle: title,
       text: text,
@@ -19,12 +21,12 @@ class Utils {
       case AlertButton.okButton:
       case AlertButton.tryAgainButton:
       case AlertButton.retryButton:
-        onYes();
+        onYes?.call();
         break;
       case AlertButton.noButton:
       case AlertButton.abortButton:
       case AlertButton.continueButton:
-        onNo();
+        onNo?.call();
         break;
       default:
     }

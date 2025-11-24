@@ -526,10 +526,10 @@ class _MainState extends State<Main> {
       const h1 = "Restore";
       const msg = "Restore note from archive?";
       const style = AlertButtonStyle.yesNo;
-      await Utils.showAlert(h1, msg, IconStyle.information, style, () async {
+      await Utils.showAlert(h1, msg, IconStyle.information, style, onYes: () async {
         await model.restoreNoteById(note.id);
         _setReadMode(_search, _searchMode);
-      }, (){});
+      });
       return;
     }
 
@@ -616,7 +616,7 @@ class _MainState extends State<Main> {
     if (fileChanged) {
       const header = "DB file is not exported";
       const msg = "On iOS you have to share this file to external storage. Do you want to share?";
-      Utils.showAlert(header, msg, IconStyle.information, AlertButtonStyle.yesNoCancel, _shareFile, model.closeFile);
+      Utils.showAlert(header, msg, IconStyle.information, AlertButtonStyle.yesNoCancel, onYes: _shareFile, onNo: model.closeFile);
     } else model.closeFile();
   }
 
