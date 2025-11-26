@@ -64,6 +64,7 @@ final class TheModel extends Model {
 
   void openFileWithDialog(BuildContext context) async {
     // set FileType.any, because "FileType.any, allowedExtensions: ["db"]" doesn't work on iOS
+    // on iOS, update ios/Runner/Info.plist -> public.filename-extension
     // TODO if iOS
     final result = (await FilePicker.platform.pickFiles(dialogTitle: "Open a DB file", type: FileType.any, lockParentWindow: true));
     final path = result?.files.firstOrNull?.path;
