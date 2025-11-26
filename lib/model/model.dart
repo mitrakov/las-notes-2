@@ -21,7 +21,7 @@ final class TheModel extends Model {
   bool get showArchive => Settings.local.showArchive;
   Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
-  void openFile(BuildContext context, String path) async {
+  void openFile(BuildContext context, String path, {String? removeMe}) async {
     if (File(path).existsSync()) {
       final ext = p.extension(path);
       switch (ext) {
@@ -30,14 +30,22 @@ final class TheModel extends Model {
           await _db.openDb(path);
           break;
         case ".dbx":                             // encrypted
-          final password = await showInputBox(context, "Enter password", hint: "Password");
+          final password = removeMe ?? await showInputBox(context, "Enter password", hint: "Password");
           if (password == null) return;
           print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
           try {
             await _db.openDb(path, password: password);
           } catch (e) {
-            const msg = "Cannot open encrypted DB file. Wrong password?";
-            FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
+            if (e.toString().startsWith("DatabaseException(open_failed")) {
+              const msg = "Cannot open encrypted DB file. Wrong password?";
+              FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
+            } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
+              // BUG in sqflite_sqlcipher. Once a user tries invalid password, next time he will always receive "out of memory" error
+              // even on a correct password. After a single retry, the error disappears.
+              // TODO: try to bump version of sqflite_sqlcipher and check again!
+              // TODO: this is a hard crutch with a single recursive call! Need to be fixed and removed
+              openFile(context, path, removeMe: password);
+            } else FlutterPlatformAlert.showAlert(windowTitle: "Error", text: e.toString(), iconStyle: IconStyle.error);
             return;
           }
           break;
@@ -63,12 +71,13 @@ final class TheModel extends Model {
       openFile(context, path);
   }
 
-  void newFile(BuildContext context, bool encrypted) async {
+  void newFile(BuildContext context, {bool? encrypted}) async {
+    final encrypt = encrypted ?? false;
     final path = await FilePicker.platform.saveFile(
-      dialogTitle: encrypted ? "Create a new encrypted DB file" : "Create a new DB file",
-      fileName: encrypted ? "mydb.dbx" : "mydb.db",
+      dialogTitle: encrypt ? "Create a new encrypted DB file" : "Create a new DB file",
+      fileName: encrypt ? "mydb.dbx" : "mydb.db",
       type: FileType.custom,
-      allowedExtensions: encrypted ? ["dbx"] : ["db"],
+      allowedExtensions: encrypt ? ["dbx"] : ["db"],
       lockParentWindow: true
     );
     if (path != null) {

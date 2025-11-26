@@ -1,29 +1,38 @@
-// ignore_for_file: sort_child_properties_last
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 Future<String?> showInputBox(BuildContext context, String title, {String? hint, String? initialText}) async {
-  TextEditingController ctrl = TextEditingController(text: initialText);
+  final ctrl = TextEditingController(text: initialText);
+  final focusNode = FocusNode();
 
-  // TODO: autofocus, ENTER key, ESC key
   return showDialog<String>(
     context: context,
     builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: ctrl,
-          decoration: InputDecoration(hintText: hint),
+      return KeyboardListener(
+        focusNode: focusNode,
+        onKeyEvent: (KeyEvent event) {
+          if (event.logicalKey == LogicalKeyboardKey.enter) {
+            Navigator.of(context).pop(ctrl.text);
+          }
+        },
+        child: AlertDialog(
+          title: Text(title),
+          content: TextField(
+            autofocus: true,
+            controller: ctrl,
+            decoration: InputDecoration(hintText: hint),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: Navigator.of(context).pop,
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(ctrl.text),
+              child: const Text("OK"),
+            ),
+          ],
         ),
-        actions: <Widget>[
-          TextButton(
-            child: const Text("Cancel"),
-            onPressed: Navigator.of(context).pop,
-          ),
-          ElevatedButton(
-            child: const Text("OK"),
-            onPressed: () => Navigator.of(context).pop(ctrl.text),
-          ),
-        ],
       );
     },
   );

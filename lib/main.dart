@@ -69,7 +69,7 @@ void ffiInit() {
 }
 
 DynamicLibrary sqlcipherOpen() {
-  // Taken from https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart#L24
+  // https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart#L24
   if (Platform.isLinux || Platform.isAndroid) {
     try {
       return DynamicLibrary.open('libsqlcipher.so');
@@ -315,8 +315,8 @@ class _MainState extends State<Main> {
               PlatformMenuItem(label: path, onSelected: () => model.openFile(context, path))
             ).toList()),
             PlatformMenuItemGroup(members: [
-              PlatformMenuItem(label: "New DB File", onSelected: () => model.newFile(context, false)),
-              PlatformMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, true)),
+              PlatformMenuItem(label: "New DB File", onSelected: () => model.newFile(context)),
+              PlatformMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
               PlatformMenuItem(label: "Open...", onSelected: () => model.openFileWithDialog(context)),
             ]),
             PlatformMenuItem(label: "Close DB File", onSelected: model.closeFile),
@@ -338,8 +338,8 @@ class _MainState extends State<Main> {
         },
         child: Actions(
           actions: {
-            NewDbFileIntent:    CallbackAction(onInvoke: (_) => model.newFile(context, false)),
-            NewDbxFileIntent:   CallbackAction(onInvoke: (_) => model.newFile(context, true)),
+            NewDbFileIntent:    CallbackAction(onInvoke: (_) => model.newFile(context)),
+            NewDbxFileIntent:   CallbackAction(onInvoke: (_) => model.newFile(context, encrypted: true)),
             OpenDbFileIntent:   CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
             CloseDbFileIntent:  CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:      CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
