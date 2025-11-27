@@ -57,7 +57,7 @@ void main() async {
   // 3. https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart
   if (Platform.isWindows) { // TODO check Linux
     sqfliteFfiInit();
-    databaseFactory = createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open("sqlite3.dll")));
+    databaseFactory = createDatabaseFactoryFfi(ffiInit: ()=>open.overrideForAll(() => DynamicLibrary.open("sqlite3-sqlcipher.dll")));
   }
 
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have

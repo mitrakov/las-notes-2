@@ -1,19 +1,20 @@
-// ignore_for_file: curly_braces_in_flow_control_structures
+// #ifdef WINDOWS import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:lasnotes/model/note.dart';
 
-// IMPORTANT! Remove f*cking sandbox in MacOS and iOS .*entitlements files
+// IMPORTANT! Remove sandbox in MacOS and iOS .*entitlements files
 class SQLiteDatabase {
   static const _GLOBAL_SCHEMA_VERSION = 5;
   Database? _db;
 
-  Future<void> openDb(String path, {String? password}) async { // TODO params in {}
+  Future<void> openDb(String path, {String? password}) async {
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
+      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; PRAGMA key='$password';"),
       onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
+      password: password, // TODO: check "PRAGMA key" instead of "password: password,"
       onUpgrade: _updateSchemaIfRequired,
-      password: password,
     );
   }
 
@@ -30,7 +31,9 @@ class SQLiteDatabase {
     await closeDb();
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
+      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; PRAGMA key='$password';"),
       onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
+      password: password, // TODO: check "PRAGMA key" instead of "password: password,"
       onCreate: (db, version) async {
         await db.transaction((tx) async {
           tx.execute("""
@@ -76,7 +79,6 @@ class SQLiteDatabase {
           );""");
         });
       },
-      password: password,
     );
   }
 
