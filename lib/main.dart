@@ -24,11 +24,8 @@ import 'package:sqlite3/open.dart' show open;
 bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
 /*
-Build:
-- bump version in pubspec.yaml
-- bump version in _installer/windows/inno-setup.iss
-
 Build for MacOS:
+  bump version in pubspec.yaml
   flutter build macos
   xCode: Product -> Destination -> Any Mac (Apple Silicon, Intel)
   xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
@@ -37,16 +34,20 @@ Build for MacOS:
   move *.dmg image to _dist
 
 Build for iOS:
+  bump version in pubspec.yaml
   flutter build ios
   xCode: Product -> Destination -> Any iOS Device (arm64)
   xCode: Product -> Archive -> Distribute App -> Release Testing
   rename and move *.ipa file to _dist
 
 Build for Windows:
+  bump version in _installer\windows\inno-setup.iss
+  lib\model\db.dart: replace "#ifdef WINDOWS" directives and fix errors (don't commit changes)
   flutter build windows
   copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
-  make sure to include sqlite3.dll
-  run "_installer\windows\inno-setup.iss" with Inno Setup Compiler 6.4.0
+  add there "sqlite3-sqlcipher.dll" from "sqlcipher\" folder
+  Compile "_installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
+  move *.exe file to _dist
 */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
