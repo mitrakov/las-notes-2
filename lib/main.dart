@@ -41,7 +41,7 @@ Build for iOS:
   rename and move *.ipa file to _dist
 
 Build for Windows:
-  bump version in _installer\windows\inno-setup.iss
+  bump version in _installer\windows\inno-setup.iss (align with pubspec.yaml)
   lib\model\db.dart: replace "// #ifdef WINDOWS " directives and fix errors (don't commit changes)
   flutter build windows
   copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
