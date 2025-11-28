@@ -9,11 +9,12 @@ class SQLiteDatabase {
 
   Future<void> openDb(String path, {String? password}) async {
     await closeDb();
+    final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; PRAGMA key='$password';"),
+      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
       onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
-      password: password, // TODO: check "PRAGMA key" instead of "password: password,"
+      password: password, // TODO: check "PRAGMA key" on Mac/iOS instead of "password: password,"
       onUpgrade: _updateSchemaIfRequired,
     );
   }
@@ -29,11 +30,12 @@ class SQLiteDatabase {
 
   Future<void> createDb(String path, {String? password}) async {
     await closeDb();
+    final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; PRAGMA key='$password';"),
+      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
       onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
-      password: password, // TODO: check "PRAGMA key" instead of "password: password,"
+      password: password, // TODO: check "PRAGMA key" on Mac/iOS instead of "password: password,"
       onCreate: (db, version) async {
         await db.transaction((tx) async {
           tx.execute("""
