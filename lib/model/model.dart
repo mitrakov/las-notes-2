@@ -36,7 +36,8 @@ final class TheModel extends Model {
           try {
             await _db.openDb(path, password: password);
           } catch (e) {
-            if (e.toString().contains("file is not a database")) { // message differs on iOS/MacOS and Windows
+            // note that messages differ on iOS/MacOS and Windows
+            if (e.toString().contains("file is not a database") || e.toString().startsWith("DatabaseException(open_failed")) {
               const msg = "Cannot open encrypted DB file. Wrong password?";
               FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
             } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
