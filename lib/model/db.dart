@@ -245,7 +245,7 @@ class SQLiteDatabase {
   Future<void> _updateSchemaIfRequired(Database db, int oldVersion, int newVersion) async {
     print("Updating schema: $oldVersion -> $newVersion");
     if (oldVersion < _GLOBAL_SCHEMA_VERSION) {
-      _db!.transaction((tx) async {
+      db.transaction((tx) async {
         if (oldVersion < 4) { // new "metadata" table
           await tx.execute("""
           CREATE TABLE IF NOT EXISTS metadata (

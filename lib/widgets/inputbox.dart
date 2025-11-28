@@ -19,6 +19,7 @@ Future<String?> showInputBox(BuildContext context, String title, {String? hint, 
           title: Text(title),
           content: TextField(
             autofocus: true,
+            obscureText: true,
             controller: ctrl,
             decoration: InputDecoration(hintText: hint),
           ),
