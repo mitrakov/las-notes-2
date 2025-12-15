@@ -6,7 +6,7 @@ publish_to: 'none'
 version: 2.2.0+8
 
 environment:
-  sdk: '>=3.3.2 <4.0.0'
+  sdk: '>=3.10.3 <4.0.0'
 
 dependencies:
   flutter:
@@ -14,7 +14,7 @@ dependencies:
   sqflite_sqlcipher: 3.2.0         # SQLite DB with SQLCipher module
   sqflite_common_ffi: 2.3.3        # SQLite for Windows/Linux: https://stackoverflow.com/q/76158800
   markdown_widget: 2.3.2+8         # markdown widget
-  file_picker: 8.0.5               # open-file dialog
+  file_picker: 8.0.7               # open-file dialog
   scoped_model: 2.0.0              # app state management
   path: 1.9.0                      # path manipulation (basename, etc.)
   flutter_platform_alert: 0.8.0    # native dialogs
@@ -23,10 +23,9 @@ dependencies:
   shared_preferences: 2.2.2        # local key-value storage for settings
   package_info_plus: 8.0.2         # get version, build and app name
   share_plus: 7.2.2                # share-dialog for iOS share
+  url_launcher_linux: 3.2.2
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   flutter_lints: 3.0.2
 
 flutter:
