@@ -1,4 +1,4 @@
-// #ifdef WINDOWS import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+// #ifdef WIN_OR_LINUX import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:lasnotes/model/note.dart';
 
@@ -12,7 +12,7 @@ class SQLiteDatabase {
     final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
+      // #ifdef WIN_OR_LINUX onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
       onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
       password: password, // TODO: check "PRAGMA key" on Mac/iOS instead of "password: password,"
       onUpgrade: _updateSchemaIfRequired,
@@ -33,7 +33,7 @@ class SQLiteDatabase {
     final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      // #ifdef WINDOWS onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
+      // #ifdef WIN_OR_LINUX onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
       onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
       password: password, // TODO: check "PRAGMA key" on Mac/iOS instead of "password: password,"
       onCreate: (db, version) async {

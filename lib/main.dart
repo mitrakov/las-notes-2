@@ -42,23 +42,32 @@ Build for iOS:
 
 Build for Windows:
   bump version in _installer\windows\inno-setup.iss (align with pubspec.yaml)
-  lib\model\db.dart: replace "// #ifdef WINDOWS " directives and fix errors (don't commit changes)
+  lib\model\db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
   flutter build windows
   copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
   add there "sqlite3.dll" from "sqlcipher\" folder
   Compile "_installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
   move *.exe file to _dist
+
+Build for Linux:
+  bump version in pubspec.yaml
+  lib/model/db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
+  flutter build linux --release
+  TO-DO: sqlcipher
+  go to: build/linux/x64/release/bundle, and zip all files
+  TO-DO: package to .rpm or .deb images
+  move *.zip file to _dist
 */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
   
-  // Enable SQLite/SQLCipher support for Windows:
+  // Enable SQLite/SQLCipher support for Windows/Linux:
   // 1. https://stackoverflow.com/q/76158800         // enable FFI support for Windows/Linux
   // 2. https://stackoverflow.com/q/75837229         // add precompiled binary for Win64 from https://sqlite.org/download.html
   // 3. https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart
-  if (Platform.isWindows) { // TODO check Linux
+  if (Platform.isWindows) {
     sqfliteFfiInit();
-    databaseFactory = createDatabaseFactoryFfi(ffiInit: ()=>open.overrideForAll(() => DynamicLibrary.open("sqlite3.dll")));
+    databaseFactory = createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open("sqlite3.dll")));
   } else if (Platform.isLinux) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
