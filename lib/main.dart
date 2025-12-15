@@ -59,6 +59,9 @@ void main() async {
   if (Platform.isWindows) { // TODO check Linux
     sqfliteFfiInit();
     databaseFactory = createDatabaseFactoryFfi(ffiInit: ()=>open.overrideForAll(() => DynamicLibrary.open("sqlite3.dll")));
+  } else if (Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
   }
 
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have

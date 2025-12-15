@@ -24,6 +24,7 @@ dependencies:
   package_info_plus: 8.0.2         # get version, build and app name
   share_plus: 7.2.2                # share-dialog for iOS share
   url_launcher_linux: 3.2.2
+  sqlite3_flutter_libs: 0.5.41
 
 dev_dependencies:
   flutter_lints: 3.0.2
