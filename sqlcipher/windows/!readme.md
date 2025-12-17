@@ -1,16 +1,15 @@
 # Compiling sqlite3.dll with SQLCipher
 The 2 files (sqlite3.dll and sqlite3.exe) are already included. If you want to compile them yourself, follow this guide.
 
-## Links
-https://github.com/sqlcipher/sqlcipher
-https://github.com/daybson/sqlite_cipher_windows/tree/master
+- [Link 1](https://github.com/sqlcipher/sqlcipher)
+- [Link 2](https://github.com/daybson/sqlite_cipher_windows/tree/master)
 
 ## Soft
-1. Install ActiveTcl library v8.6, move it to "C:\Tcl" (check correct path in Makefile.msc), and add "C:\Tcl\bin" to your PATH.
-2. Install full version of OpenSSL-Win64 library (https://slproweb.com/products/Win32OpenSSL.html), or use my copy from the ZIP archive
+1. Visual Studio for Flutter development
+2. Install ActiveTcl library v8.6, move it to "C:\Tcl" (check correct path in Makefile.msc), and add "C:\Tcl\bin" to your PATH.
+3. Install full version of OpenSSL-Win64 library (https://slproweb.com/products/Win32OpenSSL.html), or use my copy from the ZIP archive
 
 ## Build
-Clone repo:
 ```sh
 git clone https://github.com/sqlcipher/sqlcipher.git
 ```

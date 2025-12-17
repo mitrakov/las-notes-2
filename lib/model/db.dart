@@ -19,15 +19,6 @@ class SQLiteDatabase {
     );
   }
 
-  Future<void> closeDb() async {
-    await _db?.close();
-    _db = null;
-  }
-
-  bool isConnected() {
-    return _db?.isOpen ?? false;
-  }
-
   Future<void> createDb(String path, {String? password}) async {
     await closeDb();
     final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
@@ -83,6 +74,13 @@ class SQLiteDatabase {
       },
     );
   }
+
+  Future<void> closeDb() async {
+    await _db?.close();
+    _db = null;
+  }
+
+  bool isConnected() => _db?.isOpen ?? false;
 
   /// returns new generated note_id > 0
   Future<int> insertNote(String data) async {

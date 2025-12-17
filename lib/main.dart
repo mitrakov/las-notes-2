@@ -45,16 +45,17 @@ Build for Windows:
   lib\model\db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
   flutter build windows
   copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
-  add there "sqlite3.dll" from "sqlcipher\" folder
+  add there "sqlite3.dll" from "sqlcipher\windows" folder
   Compile "_installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
   move *.exe file to _dist
 
 Build for Linux:
   bump version in pubspec.yaml
   lib/model/db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
-  flutter build linux --release
-  TO-DO: sqlcipher
-  go to: build/linux/x64/release/bundle, and zip all files
+  flutter build linux
+  go to: build/linux/x64/release/bundle and rename "bundle" to "lasnotes"
+  add "libsqlite3.so" from "sqlcipher/linux" folder
+  run: zip -r9 lasnotes-linux-x.y.z.zip lasnotes/
   TO-DO: package to .rpm or .deb images
   move *.zip file to _dist
 */
