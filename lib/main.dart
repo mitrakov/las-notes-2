@@ -63,14 +63,12 @@ void main() async {
   
   // Enable SQLite/SQLCipher support for Windows/Linux:
   // 1. https://stackoverflow.com/q/76158800         // enable FFI support for Windows/Linux
-  // 2. https://stackoverflow.com/q/75837229         // add precompiled binary for Win64 from https://sqlite.org/download.html
+  // 2. pub dev: sqlite3_flutter_libs                // (deprecated) add DLLs for Windows/Linux
   // 3. https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart
-  if (Platform.isWindows) {
+  if (Platform.isWindows || Platform.isLinux) {
+    final libName = Platform.isWindows ? "sqlite3.dll" : "libsqlite3.so";
     sqfliteFfiInit();
-    databaseFactory = createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open("sqlite3.dll")));
-  } else if (Platform.isLinux) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    databaseFactory = createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open(libName)));
   }
 
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have

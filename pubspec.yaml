@@ -24,7 +24,7 @@ dependencies:
   package_info_plus: 8.0.2         # get version, build and app name
   share_plus: 7.2.2                # share-dialog for iOS share
   url_launcher_linux: 3.2.2        # TMP: override version of markdown_widget, https://github.com/asjqkkkk/markdown_widget/issues/243
-  sqlite3_flutter_libs: 0.5.41     # TMP: libs (.dll, .so) for Windows/Linux; may be removed once Linux adds SQLCipher support
+  # sqlite3_flutter_libs: 0.5.41     # TMP: libs (.dll, .so) for Windows/Linux; may be removed once Linux adds SQLCipher support
 
 dev_dependencies:
   flutter_lints: 3.0.2
