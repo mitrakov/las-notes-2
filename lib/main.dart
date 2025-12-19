@@ -27,7 +27,7 @@ bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux
 Build for MacOS:
   bump version in pubspec.yaml
   flutter build macos
-  xCode: Product -> Destination -> Any Mac (Apple Silicon, Intel)
+  xCode: Product -> Destination -> Any Mac (arm64, x86_64)
   xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
   copy "Las Notes.app" to "_installer/macos/App"
   run _installer/macos/build-dmg.sh

@@ -1,9 +1,9 @@
-# built with Flutter 3.19.4 (Apple M1), Dart 3.3.2, CocoaPods 1.16.2
+# MacOS: built with Flutter 3.38.5 (Apple M1), Dart 3.10.4, CocoaPods 1.16.2
 name: lasnotes
 description: "Las Notes mobile"
 publish_to: 'none'
 
-version: 2.2.0+8
+version: 2.2.1+9
 
 environment:
   sdk: '>=3.10.3 <4.0.0'
@@ -11,22 +11,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  sqflite_sqlcipher: 3.2.0         # SQLite DB with SQLCipher module
-  sqflite_common_ffi: 2.3.3        # SQLite for Windows/Linux: https://stackoverflow.com/q/76158800
+  sqflite_sqlcipher: 3.4.0         # SQLite DB with SQLCipher module
+  sqflite_common_ffi: 2.3.6        # SQLite for Windows/Linux; since we're stuck with sqlite3 v2.9.4, this version (2.3.6) is MAX
   markdown_widget: 2.3.2+8         # markdown widget
-  file_picker: 8.0.7               # open-file dialog
+  file_picker: 10.3.7              # open-file dialog
   scoped_model: 2.0.0              # app state management
-  path: 1.9.0                      # path manipulation (basename, etc.)
+  path: 1.9.1                      # path manipulation (basename, etc.)
   flutter_platform_alert: 0.8.0    # native dialogs
   native_context_menu: 0.2.2+5     # native context menu (desktop only)
-  window_manager: 0.4.3            # set window title in runtime (desktop only)
-  shared_preferences: 2.2.2        # local key-value storage for settings
-  package_info_plus: 8.0.2         # get version, build and app name
-  share_plus: 7.2.2                # share-dialog for iOS share
+  window_manager: 0.5.1            # set window title in runtime (desktop only)
+  shared_preferences: 2.5.4        # local key-value storage for settings
+  package_info_plus: 9.0.0         # get version, build and app name
+  share_plus: 12.0.1               # share-dialog for iOS share
   url_launcher_linux: 3.2.2        # TMP: override version of markdown_widget, https://github.com/asjqkkkk/markdown_widget/issues/243
 
-dev_dependencies:
-  flutter_lints: 3.0.2
+dependency_overrides:
+  sqlite3: 2.9.4                   # broken API in 3.0.0; need to use 'package:sqlite3/open.dart' to manually load *.dll and *.so
 
 flutter:
   uses-material-design: true
