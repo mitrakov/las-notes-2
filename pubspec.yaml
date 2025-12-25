@@ -14,7 +14,7 @@ dependencies:
   sqflite_sqlcipher: 3.4.0         # SQLite DB with SQLCipher module
   sqflite_common_ffi: 2.3.6        # SQLite for Windows/Linux; since we're stuck with sqlite3 v2.9.4, this version (2.3.6) is MAX
   markdown_widget: 2.3.2+8         # markdown widget
-  file_picker: 8.1.7               # open-file dialog (8.1.7 is MAX, there is a bug in 8.2.0 with default dir)
+  file_picker: 8.1.7               # open-file dialog (8.1.7 is MAX, https://github.com/miguelpruivo/flutter_file_picker/issues/1934)
   scoped_model: 2.0.0              # app state management
   path: 1.9.1                      # path manipulation (basename, etc.)
   flutter_platform_alert: 0.8.0    # native dialogs
