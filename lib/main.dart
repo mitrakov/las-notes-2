@@ -31,14 +31,14 @@ Build for MacOS:
   xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
   copy "Las Notes.app" to "_installer/macos/App"
   run _installer/macos/build-dmg.sh
-  move *.dmg image to _dist
+  move *.dmg image to dist/
 
 Build for iOS:
   bump version in pubspec.yaml
   flutter build ios
   xCode: Product -> Destination -> Any iOS Device (arm64)
   xCode: Product -> Archive -> Distribute App -> Release Testing
-  rename and move *.ipa file to _dist
+  rename and move *.ipa file to dist/
 
 Build for Windows:
   bump version in _installer\windows\inno-setup.iss (align with pubspec.yaml)
@@ -47,7 +47,7 @@ Build for Windows:
   copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
   add there "sqlite3.dll" from "sqlcipher\windows" folder
   Compile "_installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
-  move *.exe file to _dist
+  move *.exe file to dist\
 
 Build for Linux:
   bump version in pubspec.yaml
@@ -57,7 +57,7 @@ Build for Linux:
   add "libsqlite3.so" from "sqlcipher/linux" folder
   run: zip -r9 lasnotes-linux-x.y.z.zip lasnotes/
   TO-DO: package to .rpm or .deb images
-  move *.zip file to _dist
+  move *.zip file to dist/
 */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
