@@ -3,7 +3,7 @@ name: lasnotes
 description: "Las Notes mobile"
 publish_to: 'none'
 
-version: 2.2.2+10
+version: 2.3.0+11
 
 environment:
   sdk: '>=3.10.3 <4.0.0'
@@ -25,8 +25,22 @@ dependencies:
   share_plus: 12.0.1               # share-dialog for iOS share
   url_launcher_linux: 3.2.2        # TMP: override version of markdown_widget, https://github.com/asjqkkkk/markdown_widget/issues/243
 
+dev_dependencies:
+  flutter_launcher_icons: 0.14.4   # icons generator, run: "dart run flutter_launcher_icons"
+
 dependency_overrides:
   sqlite3: 2.9.4                   # broken API in 3.0.0; need to use 'package:sqlite3/open.dart' to manually load *.dll and *.so
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  ios: true
+  image_path: "installer/macos/appicon.png"
+  macos:
+    generate: true
+    image_path: "installer/macos/appicon.png"
+  windows:
+    generate: true
+    image_path: "installer/macos/appicon.png"
+    icon_size: 256 # min:48, max:256, default: 48
