@@ -45,8 +45,13 @@ Build for Windows:
   lib\model\db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
   flutter build windows
   copy files from "build\windows\x64\runner\Release" to "_installer\windows\Las Notes"
-  add there "sqlite3.dll" from "sqlcipher\windows" folder
+  insert RuToken and run (PIN 12345678):
+  signtool sign /v /a /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td SHA256 /fd SHA256 '.\Las Notes.exe' '*.dll'
+  signtool verify /v '.\Las Notes.exe'
+  add there "sqlite3.dll" from "sqlcipher\windows" folder as well as "vcruntime140_1.dll"
   Compile "_installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
+  signtool sign /v /a /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td SHA256 /fd SHA256 '.\lasnotes-win64.exe'
+  signtool verify /v '.\lasnotes-win64.exe'
   move *.exe file to dist\
 
 Build for Linux:
