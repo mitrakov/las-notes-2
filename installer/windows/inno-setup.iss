@@ -1,5 +1,5 @@
 #define MyAppName "Las Notes"
-#define MyAppVersion "2.2.2"
+#define MyAppVersion "2.3.0"
 #define MyAppPublisher "Artem Mitrakov"
 #define MyAppURL "https://github.com/mitrakov/las-notes-2"
 #define MyAppExeName "las_notes.exe"
@@ -25,7 +25,7 @@ DisableProgramGroupPage=yes
 LicenseFile=license.rtf
 PrivilegesRequiredOverridesAllowed=dialog
 OutputBaseFilename=lasnotes-win64-{#MyAppVersion}
-SetupIconFile=app.ico
+SetupIconFile=app_icon.ico
 SolidCompression=yes
 WizardStyle=modern
 
