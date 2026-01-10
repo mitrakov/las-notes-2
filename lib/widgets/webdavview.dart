@@ -26,6 +26,7 @@ class _WebDavViewState extends State<WebDavView> {
   late final String _tempDir;                     // temp directory to download files from WebDAV
   String _pwd = Settings.local.webdavInitPath;    // current working directory (default is "/")
   wd.Client? _client;                             // WebDAV client
+  Future<List<wd.File>>? _futureFiles;            // remote file list for a current directory
 
   @override
   void initState() {
@@ -35,43 +36,67 @@ class _WebDavViewState extends State<WebDavView> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      spacing: 10,
-      children: [
-        Text("WebDAV Connection", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-        TextField(controller: _ctrlUri, decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: "WebDAV URI",
-          hintText: "E.g. https://webdav.yandex.ru",
-        )),
-        TextField(controller: _ctrlLogin, decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: "Login",
-          hintText: "Your login",
-        )),
-        TextField(controller: _ctrlPassword, obscureText: true, decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: "Password",
-          hintText: "Your App password (not primary password)",
-        )),
-        FilledButton(child: Text("Connect"), onPressed: _connect),
-        Container(height: 1, color: Colors.grey),
-        Visibility(
-          visible: _client != null,
-          child: Text(_pwd, style: TextStyle(color: Colors.grey[600], fontSize: 20, fontWeight: FontWeight.bold))
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("WebDAV Connection"),
+        leading: Visibility(
+          visible: Platform.isIOS || Platform.isAndroid,
+          child: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.of(context).pop()),
         ),
-        Expanded(child: FutureBuilder(future: _client?.readDir(_pwd), builder: (context, snapshot) {
-          if (snapshot.hasData)
-            return _buildListView(context, snapshot.data!);
-          return Center(child: snapshot.hasError ? Text("${snapshot.error}") : Text("Please connect to WebDAV server"));
-        })),
-      ],
+        actions: [
+          Visibility(
+            visible: Platform.isMacOS || Platform.isWindows || Platform.isLinux,
+            child: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+          )
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          spacing: 10,
+          children: [
+            TextField(controller: _ctrlUri, decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: "WebDAV URI",
+              hintText: "E.g. https://webdav.yandex.ru",
+            )),
+            TextField(controller: _ctrlLogin, decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: "Login",
+              hintText: "Your login",
+            )),
+            TextField(controller: _ctrlPassword, obscureText: true, decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: "Password",
+              hintText: "Your App password (not primary password)",
+            )),
+            FilledButton(child: const Text("Connect"), onPressed: _connect),
+            Container(height: 1, color: Colors.grey),
+            Visibility(
+              visible: _client != null,
+              child: Text(_pwd, style: TextStyle(color: Colors.grey[600], fontSize: 20, fontWeight: FontWeight.bold))
+            ),
+            FutureBuilder(
+              future: _futureFiles, // use the stored variable, not the function call
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasData)
+                  return _buildListView(context, snapshot.data!);
+                return Center(child: Text("Please connect to WebDAV server"));
+              }
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildListView(BuildContext context, List<wd.File> list) {
     final isRoot = _pwd == "/";                        // if root, then no need to display ".." (Back) button
     return ListView.builder(
+      shrinkWrap: true,                                // necessary for constraints
+      physics: const NeverScrollableScrollPhysics(),   // smooth scrolling (TODO: Guap?)
       itemCount: list.length + (isRoot ? 0 : 1),       // ".." ++ items
       itemBuilder: (context, index) {
         // first element is ".." (go to parent dir)
@@ -84,6 +109,7 @@ class _WebDavViewState extends State<WebDavView> {
             onTap: () {
               setState(() {
                 _pwd = dirname(_pwd);
+                _futureFiles = _client!.readDir(_pwd);
               });
             },
           ));
@@ -100,6 +126,8 @@ class _WebDavViewState extends State<WebDavView> {
         return Opacity(
           opacity: isDir || isDb ? 1 : 0.5,
           child: TrixContainer(child: ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
             leading: Icon(isDir ? Icons.folder : isDb
               ? Icons.save_outlined
               : Icons.device_unknown,
@@ -112,6 +140,7 @@ class _WebDavViewState extends State<WebDavView> {
               if (isDir) {
                 setState(() {
                   _pwd = path;
+                  _futureFiles = _client!.readDir(_pwd);
                 });
               } else if (isDb) {
                 Settings.local.setWebdavInitDir(_pwd);
@@ -133,6 +162,7 @@ class _WebDavViewState extends State<WebDavView> {
     try {
       setState(() {
         _client = wd.newClient(uri, user: login, password: pass);
+        _futureFiles = _client!.readDir(_pwd);
         widget.controller._init(_client!, _tempDir);
         Settings.local.setWebdavConnection(uri, login, pass);
       });

@@ -65,6 +65,7 @@ Build for Linux:
   move *.zip file to dist/
 */
 void main() async {
+  // TODO: next 1) ios file extensions 2) dep override create PR for dio 3) password in sqlcipher; 4) share IOS on WebDav
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
   
   // Enable SQLite/SQLCipher support for Windows/Linux:
@@ -255,13 +256,25 @@ class _MainState extends State<Main> {
             ),
           ),
           Visibility(
+            visible: model.currentPath == null,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: FloatingActionButton(
+                heroTag: "openWebDav",
+                child: const Icon(Icons.cloud_download_outlined, size: 32),
+                backgroundColor: Colors.blueAccent[100],
+                onPressed: _showWebDavDialogMobile,
+              ),
+            ),
+          ),
+          Visibility(
             visible: model.currentPath != null && _editorMode == EditorMode.read,
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: FloatingActionButton(
                 heroTag: "closeFile",
                 child: const Icon(Icons.stop_circle_outlined, size: 32),
-                backgroundColor: Colors.blueAccent[100],
+                backgroundColor: Colors.red,
                 onPressed: _closeFile,
               ),
             ),
@@ -295,7 +308,7 @@ class _MainState extends State<Main> {
               PlatformMenuItem(label: "New DB File", onSelected: () => model.newFile(context)),
               PlatformMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
               PlatformMenuItem(label: "Open...", onSelected: () => model.openFileWithDialog(context)),
-              PlatformMenuItem(label: "Open WebDAV...", onSelected: () => _showWebDavDialog()),
+              PlatformMenuItem(label: "Open WebDAV...", onSelected: () => _showWebDavDialogDesktop()),
             ]),
             PlatformMenuItem(label: "Close DB File", onSelected: model.closeFile),
           ],
@@ -320,7 +333,7 @@ class _MainState extends State<Main> {
             NewDbFileIntent:      CallbackAction(onInvoke: (_) => model.newFile(context)),
             NewDbxFileIntent:     CallbackAction(onInvoke: (_) => model.newFile(context, encrypted: true)),
             OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
-            OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => _showWebDavDialog()),
+            OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => _showWebDavDialogDesktop()),
             CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
             SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
@@ -606,25 +619,31 @@ class _MainState extends State<Main> {
     FlutterPlatformAlert.showAlert(windowTitle: i.appName, text: text, iconStyle: IconStyle.information);
   }
 
-  void _showWebDavDialog() {
+  void _showWebDavDialogDesktop() {
     final model = ScopedModel.of<TheModel>(context);
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
+      builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-          content: SizedBox(
-            width: 500,
-            child: Builder(builder: (context) {
-              return WebDavView(model.webDav, (path) {
-                Navigator.of(dialogContext).pop();
-                model.openFile(context, path);
-              });
-            }),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          content: SizedBox(width: 400, child: WebDavView(model.webDav, (path) => _webDavOpenPath(context, path))),
         );
       },
     );
+  }
+
+  void _showWebDavDialogMobile() {
+    final model = ScopedModel.of<TheModel>(context);
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => WebDavView(model.webDav, (path) => _webDavOpenPath(context, path)),
+    ));
+  }
+
+  void _webDavOpenPath(BuildContext context, String path) {
+    final model = ScopedModel.of<TheModel>(context);
+    model.openFile(context, path);
+    Navigator.of(context).pop();
   }
 
   void _shareFile() async {
