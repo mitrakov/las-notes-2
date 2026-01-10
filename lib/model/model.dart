@@ -43,11 +43,7 @@ final class TheModel extends Model {
               const msg = "Cannot open encrypted DB file. Wrong password?";
               FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
             } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
-              // BUG in sqflite_sqlcipher. Once a user tries invalid password, next time he will always receive "out of memory" error
-              // even on a correct password. After a single retry, the error disappears.
-              // P.S. on Windows/Linux it's OK, because sqflite_sqlcipher is not used.
-              // TODO: try to bump version of sqflite_sqlcipher and check again!
-              // TODO: this is a hard crutch with a single recursive call! Need to be fixed and removed
+              // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, remove recursion
               openFile(context, path, removeMe: password);
             } else FlutterPlatformAlert.showAlert(windowTitle: "Error", text: e.toString(), iconStyle: IconStyle.error);
             return;
