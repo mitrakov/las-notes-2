@@ -1,0 +1,184 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_platform_alert/flutter_platform_alert.dart';
+import 'package:markdown_widget/config/all.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:webdav_client/webdav_client.dart' as wd;
+import 'package:lasnotes/model/settings.dart';
+import 'package:lasnotes/utils.dart';
+import 'package:lasnotes/widgets/trixcontainer.dart';
+
+class WebDavView extends StatefulWidget {
+  final WebDavController controller;
+  final ValueCallback<String> onNewPath;
+  const WebDavView(this.controller, this.onNewPath);
+
+  @override
+  State<WebDavView> createState() => _WebDavViewState();
+}
+
+class _WebDavViewState extends State<WebDavView> {
+  final TextEditingController _ctrlUri = TextEditingController(text: Settings.local.webdavUri);
+  final TextEditingController _ctrlLogin = TextEditingController(text: Settings.local.webdavLogin);
+  final TextEditingController _ctrlPassword = TextEditingController(text: Settings.local.webdavPass);
+
+  late final String _tempDir;                     // temp directory to download files from WebDAV
+  String _pwd = Settings.local.webdavInitPath;    // current working directory (default is "/")
+  wd.Client? _client;                             // WebDAV client
+
+  @override
+  void initState() {
+    super.initState();
+    getTemporaryDirectory().then((v) { _tempDir = v.path; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      spacing: 10,
+      children: [
+        Text("WebDAV Connection", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+        TextField(controller: _ctrlUri, decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "WebDAV URI",
+          hintText: "E.g. https://webdav.yandex.ru",
+        )),
+        TextField(controller: _ctrlLogin, decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "Login",
+          hintText: "Your login",
+        )),
+        TextField(controller: _ctrlPassword, obscureText: true, decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "Password",
+          hintText: "Your App password (not primary password)",
+        )),
+        FilledButton(child: Text("Connect"), onPressed: _connect),
+        Container(height: 1, color: Colors.grey),
+        Visibility(
+          visible: _client != null,
+          child: Text(_pwd, style: TextStyle(color: Colors.grey[600], fontSize: 20, fontWeight: FontWeight.bold))
+        ),
+        Expanded(child: FutureBuilder(future: _client?.readDir(_pwd), builder: (context, snapshot) {
+          if (snapshot.hasData)
+            return _buildListView(context, snapshot.data!);
+          return Center(child: snapshot.hasError ? Text("${snapshot.error}") : Text("Please connect to WebDAV server"));
+        })),
+      ],
+    );
+  }
+
+  Widget _buildListView(BuildContext context, List<wd.File> list) {
+    final isRoot = _pwd == "/";                        // if root, then no need to display ".." (Back) button
+    return ListView.builder(
+      itemCount: list.length + (isRoot ? 0 : 1),       // ".." ++ items
+      itemBuilder: (context, index) {
+        // first element is ".." (go to parent dir)
+        if (!isRoot && index == 0) {
+          return TrixContainer(child: ListTile(
+            leading: Icon(Icons.reply_outlined,
+              color: Colors.blueAccent
+            ),
+            title: Text("..", style: TextStyle(fontWeight: FontWeight.bold)),
+            onTap: () {
+              setState(() {
+                _pwd = dirname(_pwd);
+              });
+            },
+          ));
+        }
+
+        // other items are just normal directory content
+        final file = list[index - (isRoot ? 0 : 1)];  // index 0 is taken by ".." (go back)
+        final path = file.path ?? "";
+        final name = file.name ?? "";
+        final ext = extension(name);
+        final isDir = file.isDir ?? false;
+        final isDb = ext == ".db" || ext == ".dbx";
+
+        return Opacity(
+          opacity: isDir || isDb ? 1 : 0.5,
+          child: TrixContainer(child: ListTile(
+            leading: Icon(isDir ? Icons.folder : isDb
+              ? Icons.save_outlined
+              : Icons.device_unknown,
+            color: isDir ? Colors.brown : isDb
+              ? Colors.green
+              : Colors.grey),
+            title: Text("${isDir ? "/" : ""}$name", style: TextStyle(fontWeight: isDir ? FontWeight.bold : FontWeight.normal)),
+            subtitle: Text(file.mTime.toString().substring(0, 19)), // remove ".000" (milliseconds)
+            onTap: () async {
+              if (isDir) {
+                setState(() {
+                  _pwd = path;
+                });
+              } else if (isDb) {
+                Settings.local.setWebdavInitDir(_pwd);
+                widget.onNewPath(await _download(path));
+              }
+            },
+          )),
+        );
+      }
+    );
+  }
+
+  void _connect() async {
+    final uri = _ctrlUri.text.trim();
+    final login = _ctrlLogin.text.trim();
+    final pass = _ctrlPassword.text.trim();
+    if (uri.isEmpty || login.isEmpty || pass.isEmpty) return;
+
+    try {
+      setState(() {
+        _client = wd.newClient(uri, user: login, password: pass);
+        widget.controller._init(_client!, _tempDir);
+        Settings.local.setWebdavConnection(uri, login, pass);
+      });
+    } catch (e) {
+      Utils.showAlert("Cannot connect", e.toString(), IconStyle.error, AlertButtonStyle.ok);
+    }
+  }
+
+  Future<String> _download(String path) async {
+    if (_client == null) return Future.error("Not connected");
+
+    final newPath = "${_tempDir}$path";                      // TODO check / on Windows
+    print("WebDAV: downloading file $path to temp dir: $newPath");
+    await _client!.read2File(path, newPath);
+    if (File(newPath).existsSync())
+      return newPath;
+    return Future.error("Cannot open file $path ($newPath)");
+  }
+
+  @override
+  void dispose() {
+    _ctrlUri.dispose();
+    _ctrlLogin.dispose();
+    _ctrlPassword.dispose();
+    super.dispose();
+  }
+}
+
+class WebDavController {
+  wd.Client? _client;
+  String _tempDir = "";
+
+  void _init(wd.Client client, String tempDir) {
+    _client = client;
+    _tempDir = tempDir;
+  }
+
+  Future<void> updateSafe(String localPath) async {
+    if (_client == null) return;
+
+    final wdPath = localPath.replaceAll(_tempDir, "");
+    print("WebDAV: uploading file to: $wdPath");
+    await _client?.writeFromFile(localPath, wdPath);
+  }
+
+  void close() {
+    _client = null;
+  }
+}

@@ -1,4 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures, use_key_in_widget_constructors, sort_child_properties_last
 import 'dart:ffi' show DynamicLibrary;
 import 'dart:io';
 import 'dart:math';
@@ -12,12 +11,13 @@ import 'package:scoped_model/scoped_model.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 import 'package:lasnotes/widgets/trixiconbutton.dart';
+import 'package:lasnotes/widgets/webdavview.dart';
 import 'package:lasnotes/utils.dart';
 import 'package:sqlite3/open.dart' show open;
 
@@ -73,8 +73,8 @@ void main() async {
   // 3. https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart
   if (Platform.isWindows || Platform.isLinux) {
     final libName = Platform.isWindows ? "sqlite3.dll" : "libsqlite3.so";
-    sqfliteFfiInit();
-    databaseFactory = createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open(libName)));
+    sqf.sqfliteFfiInit();
+    sqf.databaseFactory = sqf.createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open(libName)));
   }
 
   if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have
@@ -188,7 +188,7 @@ class _MainState extends State<Main> {
                   OutlinedButton(
                     style: ButtonStyle(
                       alignment: Alignment.centerLeft,
-                      backgroundColor: MaterialStateProperty.all(Colors.brown[50])
+                      backgroundColor: WidgetStateProperty.all(Colors.brown[50])
                     ),
                     child: Text(tag),
                     onPressed: () {
@@ -295,6 +295,7 @@ class _MainState extends State<Main> {
               PlatformMenuItem(label: "New DB File", onSelected: () => model.newFile(context)),
               PlatformMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
               PlatformMenuItem(label: "Open...", onSelected: () => model.openFileWithDialog(context)),
+              PlatformMenuItem(label: "Open WebDAV...", onSelected: () => _showWebDavDialog()),
             ]),
             PlatformMenuItem(label: "Close DB File", onSelected: model.closeFile),
           ],
@@ -304,27 +305,29 @@ class _MainState extends State<Main> {
         shortcuts: {
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS, shift: true): NewDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyE, meta: isMacOS, control: !isMacOS, shift: true): NewDbxFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS, shift: true): OpenWebDavFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS):              OpenDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyW, meta: isMacOS, control: !isMacOS):              CloseDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS):              NewNoteIntent(),
           SingleActivator(LogicalKeyboardKey.keyS, meta: isMacOS, control: !isMacOS):              SaveNoteIntent(),
-          const SingleActivator(LogicalKeyboardKey.escape):                                        EscapeIntent(),
+          SingleActivator(LogicalKeyboardKey.escape):                                              EscapeIntent(),
           SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
-          const SingleActivator(LogicalKeyboardKey.f1):                                            AboutIntent(),
+          SingleActivator(LogicalKeyboardKey.f1):                                                  AboutIntent(),
           SingleActivator(LogicalKeyboardKey.keyQ, meta: isMacOS, control: !isMacOS):              CloseAppIntent(),
         },
         child: Actions(
           actions: {
-            NewDbFileIntent:    CallbackAction(onInvoke: (_) => model.newFile(context)),
-            NewDbxFileIntent:   CallbackAction(onInvoke: (_) => model.newFile(context, encrypted: true)),
-            OpenDbFileIntent:   CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
-            CloseDbFileIntent:  CallbackAction(onInvoke: (_) => model.closeFile()),
-            NewNoteIntent:      CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
-            SaveNoteIntent:     CallbackAction(onInvoke: (_) => _saveNote()),
-            EscapeIntent:       CallbackAction(onInvoke: (_) => _setReadMode(_search, _searchMode)),
-            GlobalSearchIntent: CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
-            AboutIntent:        CallbackAction(onInvoke: (_) => _showAboutDialog()),
-            CloseAppIntent:     CallbackAction(onInvoke: (_) => exit(0)),
+            NewDbFileIntent:      CallbackAction(onInvoke: (_) => model.newFile(context)),
+            NewDbxFileIntent:     CallbackAction(onInvoke: (_) => model.newFile(context, encrypted: true)),
+            OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
+            OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => _showWebDavDialog()),
+            CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
+            NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
+            SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
+            EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search, _searchMode)),
+            GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
+            AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
+            CloseAppIntent:       CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts
             autofocus: true,          // focused by default
@@ -344,7 +347,7 @@ class _MainState extends State<Main> {
                               child: OutlinedButton(
                                 style: ButtonStyle(
                                   alignment: Alignment.centerLeft,
-                                  backgroundColor: MaterialStateProperty.all(Colors.brown[50])
+                                  backgroundColor: WidgetStateProperty.all(Colors.brown[50])
                                 ),
                                 child: Text(tag),
                                 onPressed: () => _setReadMode(tag, SearchMode.tag),
@@ -430,8 +433,8 @@ class _MainState extends State<Main> {
                           ),
                           const SizedBox(width: 10),
                           FilledButton(style: ButtonStyle(
-                            backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
-                            minimumSize: const MaterialStatePropertyAll(Size(120, 50))),
+                            backgroundColor: WidgetStateProperty.all(Colors.blueAccent),
+                            minimumSize: const WidgetStatePropertyAll(Size(120, 50))),
                             onPressed: _saveNote,
                             child: Text(_currentNoteId == null ? "Save" : "Update",
                               style: const TextStyle(fontSize: 18),
@@ -603,6 +606,27 @@ class _MainState extends State<Main> {
     FlutterPlatformAlert.showAlert(windowTitle: i.appName, text: text, iconStyle: IconStyle.information);
   }
 
+  void _showWebDavDialog() {
+    final model = ScopedModel.of<TheModel>(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+          content: SizedBox(
+            width: 500,
+            child: Builder(builder: (context) {
+              return WebDavView(model.webDav, (path) {
+                Navigator.of(dialogContext).pop();
+                model.openFile(context, path);
+              });
+            }),
+          ),
+        );
+      },
+    );
+  }
+
   void _shareFile() async {
     final model = ScopedModel.of<TheModel>(context);
     if (model.currentPath != null) {
@@ -659,13 +683,14 @@ class _MainState extends State<Main> {
 enum EditorMode { read, edit }
 enum SearchMode { all, tag, keyword, id, random }
 
-class NewDbFileIntent    extends Intent {}
-class NewDbxFileIntent   extends Intent {}
-class OpenDbFileIntent   extends Intent {}
-class CloseDbFileIntent  extends Intent {}
-class NewNoteIntent      extends Intent {}
-class SaveNoteIntent     extends Intent {}
-class EscapeIntent       extends Intent {}
-class GlobalSearchIntent extends Intent {}
-class AboutIntent        extends Intent {}
-class CloseAppIntent     extends Intent {}
+class NewDbFileIntent      extends Intent {}
+class NewDbxFileIntent     extends Intent {}
+class OpenDbFileIntent     extends Intent {}
+class OpenWebDavFileIntent extends Intent {}
+class CloseDbFileIntent    extends Intent {}
+class NewNoteIntent        extends Intent {}
+class SaveNoteIntent       extends Intent {}
+class EscapeIntent         extends Intent {}
+class GlobalSearchIntent   extends Intent {}
+class AboutIntent          extends Intent {}
+class CloseAppIntent       extends Intent {}

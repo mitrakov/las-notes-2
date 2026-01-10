@@ -1,4 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -9,16 +8,19 @@ import 'package:lasnotes/model/db.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/widgets/inputbox.dart';
+import 'package:lasnotes/widgets/webdavview.dart';
 import 'package:lasnotes/utils.dart';
 import 'package:path/path.dart' as p;
 
 final class TheModel extends Model {
   final _db = SQLiteDatabase();
+  final _webDav = WebDavController();
   String? _currentPath;
 
   String? get currentPath => _currentPath;
   List<String> get recentFiles => Settings.local.recentFiles;
   bool get showArchive => Settings.local.showArchive;
+  WebDavController get webDav => _webDav;
   Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
   void openFile(BuildContext context, String path, {String? removeMe}) async {
@@ -122,6 +124,7 @@ final class TheModel extends Model {
 
   void closeFile() async {
     await _db.closeDb();
+    _webDav.close();
     _currentPath = null;
     notifyListeners();
   }
@@ -175,12 +178,14 @@ final class TheModel extends Model {
       await _db.updateNote(noteId, data);
       await _updateTags(noteId, newTags, oldTags);
       Utils.showAlert("Done", "Note updated", IconStyle.information, AlertButtonStyle.ok);
+      _webDav.updateSafe(_currentPath!);
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data);
       await _db.linkTagsToNote(newNoteId, tags);
       Utils.showAlert("Done", "Note added", IconStyle.information, AlertButtonStyle.ok);
+      _webDav.updateSafe(_currentPath!);
       return newNoteId;
     }
   }
