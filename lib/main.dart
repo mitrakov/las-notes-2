@@ -65,7 +65,7 @@ Build for Linux:
   move *.zip file to dist/
 */
 void main() async {
-  // TODO: next 1) ios file extensions 2) dep override create PR for dio 3) password in sqlcipher; 4) share IOS on WebDav
+  // TODO: 2) dep override create PR for dio 3) password in sqlcipher
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
   
   // Enable SQLite/SQLCipher support for Windows/Linux:

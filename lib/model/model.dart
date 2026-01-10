@@ -67,14 +67,11 @@ final class TheModel extends Model {
   }
 
   void openFileWithDialog(BuildContext context) async {
-    // set FileType.any, because "FileType.any, allowedExtensions: ["db"]" doesn't work on iOS
-    // on iOS, update ios/Runner/Info.plist -> public.filename-extension
-    // TODO if iOS
-    //
-    // ! since v 10.3.7, you must add to macos/Runner/DebugProfile.entitlements and Release.entitlements:
-    // <key>com.apple.security.files.user-selected.read-write</key>
-    // <true/>
-    final result = (await FilePicker.platform.pickFiles(dialogTitle: "Open a DB file", type: FileType.any, lockParentWindow: true));
+    // 1) on iOS/macOS, also update ios/Runner/Info.plist & macos/Runner/Info.plist
+    // 2) since FilePicker v10.3.7, you must add to macos/Runner/DebugProfile.entitlements and Release.entitlements:
+    // <key>com.apple.security.files.user-selected.read-write</key><true/>
+    final result = await FilePicker.platform
+        .pickFiles(dialogTitle: "Open a DB file", type: FileType.custom, allowedExtensions: ["db", "dbx"], lockParentWindow: true);
     final path = result?.files.firstOrNull?.path;
     if (path != null && context.mounted)
       openFile(context, path);
