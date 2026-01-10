@@ -123,8 +123,14 @@ class _MainState extends State<Main> {
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
 
-  bool get fileChanged => Platform.isIOS ? _fileChanged : false;
-  set fileChanged(bool v) { if (Platform.isIOS) _fileChanged = v; }
+  bool get fileChanged => _fileChanged;
+  set fileChanged(bool v) {
+    if (Platform.isIOS) {
+      final model = ScopedModel.of<TheModel>(context);
+      if (!model.webDav.isConnected)            // for WebDAV, it's OK
+        _fileChanged = v;
+    }
+  }
 
   @override
   void initState() {

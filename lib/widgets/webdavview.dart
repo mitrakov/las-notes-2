@@ -175,11 +175,11 @@ class _WebDavViewState extends State<WebDavView> {
     if (_client == null) return Future.error("Not connected");
 
     final newPath = "${_tempDir}$path";                      // TODO check / on Windows
-    print("WebDAV: downloading file $path to temp dir: $newPath");
+    print("WebDAV: downloading file '$path' to temp dir: $newPath");
     await _client!.read2File(path, newPath);
     if (File(newPath).existsSync())
       return newPath;
-    return Future.error("Cannot open file $path ($newPath)");
+    return Future.error("Cannot open file '$path' ($newPath)");
   }
 
   @override
@@ -194,6 +194,8 @@ class _WebDavViewState extends State<WebDavView> {
 class WebDavController {
   wd.Client? _client;
   String _tempDir = "";
+
+  bool get isConnected => _client != null;
 
   void _init(wd.Client client, String tempDir) {
     _client = client;
