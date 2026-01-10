@@ -65,7 +65,6 @@ Build for Linux:
   move *.zip file to dist/
 */
 void main() async {
-  // TODO: 2) dep override create PR for dio 3) password in sqlcipher
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
   
   // Enable SQLite/SQLCipher support for Windows/Linux:
@@ -648,8 +647,8 @@ class _MainState extends State<Main> {
 
   void _webDavOpenPath(BuildContext context, String path) {
     final model = ScopedModel.of<TheModel>(context);
+    Navigator.of(context).pop(); // should be first, for ".dbx" files to ask a password
     model.openFile(context, path);
-    Navigator.of(context).pop();
   }
 
   void _shareFile() async {

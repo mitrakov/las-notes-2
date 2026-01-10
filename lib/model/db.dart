@@ -1,5 +1,4 @@
-// #ifdef WIN_OR_LINUX import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart'; // #ifdef WIN_OR_LINUX import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:lasnotes/model/note.dart';
 
 // IMPORTANT! Remove sandbox in MacOS and iOS .*entitlements files
@@ -9,24 +8,22 @@ class SQLiteDatabase {
 
   Future<void> openDb(String path, {String? password}) async {
     await closeDb();
-    final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
+    final key = password != null ? "PRAGMA key='$password';" : ""; // only Windows/Linux (otherwise will be ignored)
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      // #ifdef WIN_OR_LINUX onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
-      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
-      password: password, // TODO: check "PRAGMA key" on Mac/iOS instead of "password: password,"
+      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; $key"),
+      password: password, // #ifdef WIN_OR_LINUX remove_this_line
       onUpgrade: _updateSchemaIfRequired,
     );
   }
 
   Future<void> createDb(String path, {String? password}) async {
     await closeDb();
-    final pwdWin64 = password != null ? "PRAGMA key='$password';" : "";
+    final key = password != null ? "PRAGMA key='$password';" : ""; // only Windows/Linux (otherwise will be ignored)
     _db = await openDatabase(path,
       version: _GLOBAL_SCHEMA_VERSION,
-      // #ifdef WIN_OR_LINUX onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;$pwdWin64"),
-      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON;"),
-      password: password, // TODO: check "PRAGMA key" on Mac/iOS instead of "password: password,"
+      onConfigure: (db) => db.execute("PRAGMA foreign_keys=ON; $key"),
+      password: password, // #ifdef WIN_OR_LINUX remove_this_line
       onCreate: (db, version) async {
         await db.transaction((tx) async {
           tx.execute("""
