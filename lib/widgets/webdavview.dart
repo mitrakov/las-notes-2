@@ -162,6 +162,7 @@ class _WebDavViewState extends State<WebDavView> {
     try {
       setState(() {
         _client = wd.newClient(uri, user: login, password: pass);
+        _client!.c.options.contentType = "application/octet-stream"; // Bug: https://github.com/flymzero/webdav_client/issues/25
         _futureFiles = _client!.readDir(_pwd);
         widget.controller._init(_client!, _tempDir);
         Settings.local.setWebdavConnection(uri, login, pass);
