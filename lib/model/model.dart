@@ -41,11 +41,11 @@ final class TheModel extends Model {
             // note that messages differ on iOS/MacOS and Windows
             if (e.toString().contains("file is not a database") || e.toString().startsWith("DatabaseException(open_failed")) {
               const msg = "Cannot open encrypted DB file. Wrong password?";
-              FlutterPlatformAlert.showAlert(windowTitle: "Error", text: msg, iconStyle: IconStyle.error);
+              Utils.showAlert("Error", msg, IconStyle.error, AlertButtonStyle.ok);
             } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
-              // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, remove recursion
+              // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, rm recursion
               openFile(context, path, removeMe: password);
-            } else FlutterPlatformAlert.showAlert(windowTitle: "Error", text: e.toString(), iconStyle: IconStyle.error);
+            } else Utils.showAlert("Error", e.toString(), IconStyle.error, AlertButtonStyle.ok);
             return;
           }
           break;
@@ -98,8 +98,7 @@ final class TheModel extends Model {
           break;
         case ".dbx":                             // encrypted
           const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
-          await FlutterPlatformAlert.showAlert(windowTitle: "DB encryption", text: msg, iconStyle: IconStyle.exclamation);
-          if (!context.mounted) return;
+          await Utils.showAlert("DB encryption", msg, IconStyle.exclamation, AlertButtonStyle.ok);
           final password = await showInputBox(context, "Enter password", hint: "Password");
           if (password == null) return;
           print("Creating encrypted DB file $path");
@@ -144,15 +143,20 @@ final class TheModel extends Model {
     const text = "Are you sure you want to archive this note?";
     return Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
+      await _webDav.updateSafe(_currentPath);
     });
   }
 
-  Future<void> restoreNoteById(int noteId) => _db.softDeleteNote(noteId, false);
+  Future<void> restoreNoteById(int noteId) async {
+    await _db.softDeleteNote(noteId, false);
+    await _webDav.updateSafe(_currentPath);
+  }
 
   Future<void> deleteNoteById(int noteId) {
     const text = "Are you sure you want to delete this note? It cannot be undone";
     return Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, onYes: () async {
       await _db.deleteNote(noteId);
+      await _webDav.updateSafe(_currentPath);
     });
   }
 
@@ -171,14 +175,14 @@ final class TheModel extends Model {
       await _db.updateNote(noteId, data);
       await _updateTags(noteId, newTags, oldTags);
       Utils.showAlert("Done", "Note updated", IconStyle.information, AlertButtonStyle.ok);
-      _webDav.updateSafe(_currentPath!);
+      await _webDav.updateSafe(_currentPath);
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data);
       await _db.linkTagsToNote(newNoteId, tags);
       Utils.showAlert("Done", "Note added", IconStyle.information, AlertButtonStyle.ok);
-      _webDav.updateSafe(_currentPath!);
+      await _webDav.updateSafe(_currentPath);
       return newNoteId;
     }
   }

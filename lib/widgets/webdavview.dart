@@ -203,8 +203,8 @@ class WebDavController {
     _tempDir = tempDir;
   }
 
-  Future<void> updateSafe(String localPath) async {
-    if (_client == null) return;
+  Future<void> updateSafe(String? localPath) async {
+    if (_client == null || localPath == null) return;
 
     final wdPath = localPath.replaceAll(_tempDir, "");
     print("WebDAV: uploading file to: $wdPath");

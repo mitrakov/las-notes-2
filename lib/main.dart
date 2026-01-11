@@ -620,8 +620,8 @@ class _MainState extends State<Main> {
 
   void _showAboutDialog() async {
     final i = await PackageInfo.fromPlatform();
-    final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2025\nmitrakov-artem@yandex.ru\nAll rights reserved.";
-    FlutterPlatformAlert.showAlert(windowTitle: i.appName, text: text, iconStyle: IconStyle.information);
+    final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2026\nmitrakov-artem@yandex.ru\nAll rights reserved.";
+    Utils.showAlert(i.appName, text, IconStyle.information, AlertButtonStyle.ok);
   }
 
   void _showWebDavDialogDesktop() {
