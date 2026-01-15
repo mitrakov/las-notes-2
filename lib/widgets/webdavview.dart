@@ -208,7 +208,9 @@ class WebDavController {
 
     final wdPath = localPath.replaceAll(_tempDir, "");
     print("WebDAV: uploading file to: $wdPath");
-    await _client?.writeFromFile(localPath, wdPath);
+    final timer = Stopwatch()..start();
+    await _client?.writeFromFile(localPath, wdPath); // may be very slow (≈ 1 Mb/min)
+    print("WebDAV: uploading done: $wdPath (${timer.elapsed})");
   }
 
   void close() {

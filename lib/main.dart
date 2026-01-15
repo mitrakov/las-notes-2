@@ -121,14 +121,12 @@ class _MainState extends State<Main> {
   var _searchMode = SearchMode.tag;             // how to search notes (by clicking tag, by full-text search, by ID, or ALL)
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
+  Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
 
   bool get fileChanged => _fileChanged;
   set fileChanged(bool v) {
-    if (Platform.isIOS) {
-      final model = ScopedModel.of<TheModel>(context);
-      if (!model.webDav.isConnected)            // for WebDAV, it's OK
-        _fileChanged = v;
-    }
+    if (Platform.isIOS && !ScopedModel.of<TheModel>(context).webDav.isConnected) // for WebDAV, it's OK
+      _fileChanged = v;
   }
 
   @override
@@ -212,6 +210,7 @@ class _MainState extends State<Main> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          _webDavProgressIndicator(),
           Visibility(
             visible: model.currentPath != null && _editorMode == EditorMode.read,
             child: Padding(
@@ -464,6 +463,7 @@ class _MainState extends State<Main> {
                   )],
                 ),
               ),
+              floatingActionButton: _webDavProgressIndicator(),
             ),
           ),
         ),
@@ -526,6 +526,7 @@ class _MainState extends State<Main> {
       const style = AlertButtonStyle.yesNo;
       await Utils.showAlert(h1, msg, IconStyle.information, style, onYes: () async {
         await model.restoreNoteById(note.id);
+        _webDavLoading = model.uploadWebDav();
         _setReadMode(_search, _searchMode);
       });
       return;
@@ -549,11 +550,13 @@ class _MainState extends State<Main> {
         _setEditMode(note.id, note.data, note.tags);
         break;
       case CustomButton.neutralButton:
-        await model.archiveNoteById(note.id);
+        if (await model.archiveNoteById(note.id))
+          _webDavLoading = model.uploadWebDav();
         _setReadMode(_search, _searchMode);
         break;
       case CustomButton.negativeButton:
-        await model.deleteNoteById(note.id);
+        if (await model.deleteNoteById(note.id))
+          _webDavLoading = model.uploadWebDav();
         _setReadMode(_search, _searchMode);
         break;
       default:
@@ -576,15 +579,18 @@ class _MainState extends State<Main> {
             _setEditMode(note.id, note.data, note.tags);
             break;
           case archiveTitle:
-            await model.archiveNoteById(note.id);
+            if (await model.archiveNoteById(note.id))
+              _webDavLoading = model.uploadWebDav();
             _setReadMode(_search, _searchMode);
             break;
           case deleteTitle:
-            await model.deleteNoteById(note.id);
+            if (await model.deleteNoteById(note.id))
+              _webDavLoading = model.uploadWebDav();
             _setReadMode(_search, _searchMode);
             break;
           case restoreTitle:
             await model.restoreNoteById(note.id);
+            _webDavLoading = model.uploadWebDav();
             _setReadMode(_search, _searchMode);
             break;
           default:
@@ -598,6 +604,22 @@ class _MainState extends State<Main> {
     return ListView(children: children);
   }
 
+  Widget _webDavProgressIndicator() {
+    return FutureBuilder(
+      future: _webDavLoading,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return Opacity(opacity: 0.3,
+            child: const Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Text("WebDAV", style: TextStyle(color: Colors.purple)),
+              CircularProgressIndicator(color: Colors.purple),
+            ]),
+          );
+        return const SizedBox.shrink();
+      }
+    );
+  }
+
   void _saveNote() async {
     if (_currentText.text.trim().isEmpty) return;
 
@@ -605,8 +627,11 @@ class _MainState extends State<Main> {
     final newId = await model.saveNote(_currentNoteId, _currentText.text, _currentTags.text, _oldTags);
     if (newId != null) {
       fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
+      _webDavLoading = model.uploadWebDav();
       _setReadMode(newId.toString(), SearchMode.id);
     } else _focusNodeTags.requestFocus();
+
+    FocusManager.instance.primaryFocus?.unfocus(); // hide keyboard on iOS/Android
   }
 
   void _closeFile() {
@@ -652,10 +677,10 @@ class _MainState extends State<Main> {
   }
 
   void _shareFile() async {
-    final model = ScopedModel.of<TheModel>(context);
-    if (model.currentPath != null) {
-      final filename = basename(model.currentPath!);
-      Share.shareXFiles([XFile(model.currentPath!)], subject: 'Export file "$filename"?');
+    final path = ScopedModel.of<TheModel>(context).currentPath;
+    if (path != null) {
+      final filename = basename(path);
+      await SharePlus.instance.share(ShareParams(title: 'Export file "$filename"?', files: [XFile(path)]));
       fileChanged = false;
     }
   }

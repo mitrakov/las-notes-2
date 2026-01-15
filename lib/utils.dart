@@ -4,7 +4,7 @@ import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 class Utils {
   static Iterable<String> split(String str) => str.split(",").map((s) => s.trim()).where((s) => s.isNotEmpty);
 
-  static Future<void> showAlert(
+  static Future<bool> showAlert(
       String title, String text, IconStyle icon, AlertButtonStyle buttons, {VoidCallback? onYes, VoidCallback? onNo}) async {
     final result = await FlutterPlatformAlert.showAlert(
       windowTitle: title,
@@ -22,13 +22,13 @@ class Utils {
       case AlertButton.tryAgainButton:
       case AlertButton.retryButton:
         onYes?.call();
-        break;
+        return true;
       case AlertButton.noButton:
       case AlertButton.abortButton:
       case AlertButton.continueButton:
-        onNo?.call();
-        break;
       default:
+        onNo?.call();
+        return false;
     }
   }
 }

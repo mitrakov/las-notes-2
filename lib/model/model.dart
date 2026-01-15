@@ -139,24 +139,21 @@ final class TheModel extends Model {
     return _db.searchByKeyword(word, showArchive);
   }
 
-  Future<void> archiveNoteById(int noteId) {
+  Future<bool> archiveNoteById(int noteId) {
     const text = "Are you sure you want to archive this note?";
     return Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
-      await _webDav.updateSafe(_currentPath);
     });
   }
 
-  Future<void> restoreNoteById(int noteId) async {
-    await _db.softDeleteNote(noteId, false);
-    await _webDav.updateSafe(_currentPath);
+  Future<void> restoreNoteById(int noteId) {
+    return _db.softDeleteNote(noteId, false);
   }
 
-  Future<void> deleteNoteById(int noteId) {
+  Future<bool> deleteNoteById(int noteId) {
     const text = "Are you sure you want to delete this note? It cannot be undone";
     return Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, onYes: () async {
       await _db.deleteNote(noteId);
-      await _webDav.updateSafe(_currentPath);
     });
   }
 
@@ -175,17 +172,17 @@ final class TheModel extends Model {
       await _db.updateNote(noteId, data);
       await _updateTags(noteId, newTags, oldTags);
       Utils.showAlert("Done", "Note updated", IconStyle.information, AlertButtonStyle.ok);
-      await _webDav.updateSafe(_currentPath);
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data);
       await _db.linkTagsToNote(newNoteId, tags);
       Utils.showAlert("Done", "Note added", IconStyle.information, AlertButtonStyle.ok);
-      await _webDav.updateSafe(_currentPath);
       return newNoteId;
     }
   }
+
+  Future<void> uploadWebDav() => _webDav.updateSafe(_currentPath);
 
   Future<void> _updateTags(int noteId, String newTagsStr, String oldTagsStr) async {
     final oldTags = Utils.split(oldTagsStr).toSet();
