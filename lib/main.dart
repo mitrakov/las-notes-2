@@ -631,7 +631,8 @@ class _MainState extends State<Main> {
       _setReadMode(newId.toString(), SearchMode.id);
     } else _focusNodeTags.requestFocus();
 
-    FocusManager.instance.primaryFocus?.unfocus(); // hide keyboard on iOS/Android
+    if (!isDesktop)
+      FocusManager.instance.primaryFocus?.unfocus(); // hide keyboard on iOS/Android
   }
 
   void _closeFile() {
