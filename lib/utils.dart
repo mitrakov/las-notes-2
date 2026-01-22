@@ -4,6 +4,12 @@ import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 class Utils {
   static Iterable<String> split(String str) => str.split(",").map((s) => s.trim()).where((s) => s.isNotEmpty);
 
+  static int linesCount(String str) => str.split("\n").where((s) => s.trim().isNotEmpty).length;
+
+  static String firstLine(String str) => str.split("\n").firstWhere((s) => s.trim().isNotEmpty, orElse: () => "");
+
+  static Iterable<String> firstLines(String str, int n) => str.split("\n").take(n);
+
   static Future<bool> showAlert(
       String title, String text, IconStyle icon, AlertButtonStyle buttons, {VoidCallback? onYes, VoidCallback? onNo}) async {
     final result = await FlutterPlatformAlert.showAlert(

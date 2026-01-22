@@ -1,6 +1,6 @@
 import 'dart:ffi' show DynamicLibrary;
 import 'dart:io';
-import 'dart:math';
+import 'package:lasnotes/widgets/collapsible.dart';
 import 'package:path/path.dart' show basename;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -151,7 +151,8 @@ class _MainState extends State<Main> {
   Widget _buildForMobile(BuildContext context, TheModel model) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Las Notes"),
+        title: const Text("Las Notes", style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         actions: [
           IconButton(onPressed: _shareFile, icon: const Icon(Icons.ios_share)),
           IconButton(onPressed: _showAboutDialog, icon: const Icon(Icons.info_outline)),
@@ -218,7 +219,7 @@ class _MainState extends State<Main> {
               child: FloatingActionButton(
                 heroTag: "newNote",
                 child: const Icon(Icons.note_add_outlined, size: 32),
-                backgroundColor: Colors.lightGreen[800],
+                backgroundColor: Colors.lightGreen[700],
                 onPressed: () => _setEditMode(null, "", ""),
               ),
             ),
@@ -229,7 +230,7 @@ class _MainState extends State<Main> {
               padding: const EdgeInsets.all(8.0),
               child: FloatingActionButton(
                 heroTag: "saveNote",
-                child: const Icon(Icons.cloud_done_sharp, size: 32),
+                child: const Icon(Icons.domain_verification, size: 32),
                 backgroundColor: Colors.green[500],
                 onPressed: _saveNote,
               ),
@@ -241,7 +242,7 @@ class _MainState extends State<Main> {
               padding: const EdgeInsets.all(8.0),
               child: FloatingActionButton(
                 heroTag: "cancelEdit",
-                child: const Icon(Icons.cancel_presentation, size: 32),
+                child: const Icon(Icons.cancel, size: 30),
                 backgroundColor: Colors.red[300],
                 onPressed: () => _setReadMode(_search, _searchMode),
               ),
@@ -253,8 +254,8 @@ class _MainState extends State<Main> {
               padding: const EdgeInsets.all(8.0),
               child: FloatingActionButton(
                 heroTag: "openFile",
-                child: const Icon(Icons.open_in_new, size: 32),
-                backgroundColor: Colors.blueAccent[100],
+                child: const Icon(Icons.download, size: 28),
+                backgroundColor: Colors.brown[300],
                 onPressed: () => model.openFileWithDialog(context),
               ),
             ),
@@ -265,8 +266,8 @@ class _MainState extends State<Main> {
               padding: const EdgeInsets.all(8.0),
               child: FloatingActionButton(
                 heroTag: "openWebDav",
-                child: const Icon(Icons.cloud_download_outlined, size: 32),
-                backgroundColor: Colors.blueAccent[100],
+                child: const Icon(Icons.cloud_download_outlined, size: 36),
+                backgroundColor: Colors.blue[300],
                 onPressed: _showWebDavDialogMobile,
               ),
             ),
@@ -278,7 +279,7 @@ class _MainState extends State<Main> {
               child: FloatingActionButton(
                 heroTag: "closeFile",
                 child: const Icon(Icons.stop_circle_outlined, size: 32),
-                backgroundColor: Colors.red,
+                backgroundColor: Colors.red[300],
                 onPressed: _closeFile,
               ),
             ),
@@ -418,7 +419,6 @@ class _MainState extends State<Main> {
                                 keyboardType: TextInputType.multiline,
                                 maxLines: 128, // only for sizing widget (it's not a real limit of lines)
                                 autocorrect: false,
-                                enableSuggestions: false,
                                 decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
                               ),
                             )),
@@ -479,7 +479,7 @@ class _MainState extends State<Main> {
           onDoubleTap: () => _contextMenuMobile(note),
           child: Opacity(
             opacity: note.isDeleted ? 0.67 : 1,
-            child: MarkdownWidget(data: note.data, shrinkWrap: true),
+            child: Collapsible(note.data, linesToCollapse: 32),
           )))).toList()
         );
       case EditorMode.edit:
@@ -491,7 +491,6 @@ class _MainState extends State<Main> {
             keyboardType: TextInputType.multiline,
             maxLines: 128, // only for sizing widget (it's not a real limit of lines)
             autocorrect: false,
-            enableSuggestions: false,
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
           )),
           Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text, shrinkWrap: true))),
@@ -503,7 +502,6 @@ class _MainState extends State<Main> {
                 controller: _currentTags,
                 focusNode: _focusNodeTags,
                 autocorrect: false,
-                enableSuggestions: false,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(1)),
                   hintText: "Tag1, Tag2, ...",
@@ -535,7 +533,7 @@ class _MainState extends State<Main> {
     // regular notes
     final result = await FlutterPlatformAlert.showCustomAlert(
       windowTitle: "Update note",
-      text: "${note.data.substring(0, min(note.data.length, 25))}...",
+      text: Utils.firstLine(note.data),
       iconStyle: IconStyle.question,
       positiveButtonTitle: "Edit",
       neutralButtonTitle: "Archive",
@@ -598,7 +596,7 @@ class _MainState extends State<Main> {
       },
       child: TrixContainer(child: Opacity(
         opacity: note.isDeleted ? 0.67 : 1,
-        child: MarkdownWidget(data: note.data, shrinkWrap: true),
+        child: Collapsible(note.data, linesToCollapse: 32),
       )),
     )).toList();
     return ListView(children: children);
