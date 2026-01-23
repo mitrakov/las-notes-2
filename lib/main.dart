@@ -1,10 +1,9 @@
-import 'dart:ffi' show DynamicLibrary;
 import 'dart:io';
-import 'package:lasnotes/widgets/collapsible.dart';
-import 'package:path/path.dart' show basename;
+import 'dart:ffi' show DynamicLibrary;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_alert/flutter_platform_alert.dart';
+import 'package:path/path.dart' show basename;
 import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
@@ -12,14 +11,16 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
+import 'package:sqlite3/open.dart' show open;
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 import 'package:lasnotes/widgets/trixiconbutton.dart';
 import 'package:lasnotes/widgets/webdavview.dart';
+import 'package:lasnotes/widgets/collapsible.dart';
 import 'package:lasnotes/utils.dart';
-import 'package:sqlite3/open.dart' show open;
+import 'package:lasnotes/trixstack.dart';
 
 bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
@@ -78,7 +79,8 @@ void main() async {
     sqf.databaseFactory = sqf.createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open(libName)));
   }
 
-  if (isDesktop) await WindowManager.instance.ensureInitialized(); // must have
+  if (isDesktop)
+    await WindowManager.instance.ensureInitialized(); // must have
   await Settings.init(); // must have
   final model = TheModel();
 
@@ -117,12 +119,13 @@ class _MainState extends State<Main> {
   int? _currentNoteId;                          // if present, noteID in edit mode (otherwise NEW_NOTE mode)
   var _oldTags = "";                            // old comma-separated tags for edit mode (to calc tags diff)
   Iterable<Note> _notes = [];                   // in view mode, DB notes array for markdown view
-  var _search = "";                             // search by tag name (SearchMode.tag), keyword (.keyword) or ID (.id)
+  var _search = Search("", SearchMode.all);     // search by tag name (.tag), keyword (.keyword), ID (.id) or all (.all)
   var _editorMode = EditorMode.edit;            // edit or view mode
-  var _searchMode = SearchMode.tag;             // how to search notes (by clicking tag, by full-text search, by ID, or ALL)
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
   Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
+  var _undo = TrixStack<Search>();              // UNDO stack history
+  var _redo = TrixStack<Search>();              // REDO stack history
 
   bool get fileChanged => _fileChanged;
   set fileChanged(bool v) {
@@ -139,11 +142,13 @@ class _MainState extends State<Main> {
   @override
   Widget build(BuildContext context) {
     return ScopedModelDescendant<TheModel>(builder: (context, child, model) {
-      if (_currentPath != model.currentPath) {
+      if (_currentPath != model.currentPath) { // new file opened
         _currentPath = model.currentPath;
-        _setReadMode("", SearchMode.all);
+        _undo.clear();
+        _redo.clear();
+        _setReadMode(Search("", SearchMode.all));
         if (isDesktop)
-          windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes"); // careful, heavy op
+          windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes");
       }
       return isDesktop ? _buildForDesktop(context, model) : _buildForMobile(context, model);
     });
@@ -172,7 +177,7 @@ class _MainState extends State<Main> {
               focusNode: _focusNodeSearch,
               decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
               onSubmitted: (s) {
-                _setReadMode(s, SearchMode.keyword);
+                _setReadMode(Search(s, SearchMode.keyword));
                 Navigator.pop(context);
               },
             ),
@@ -181,7 +186,7 @@ class _MainState extends State<Main> {
               value: model.showArchive,
               onChanged: (v) {
                 model.setShowArchive(v ?? false);
-                _setReadMode(_search, _searchMode);
+                _setReadMode(_search);
                 Navigator.pop(context);
               },
               controlAffinity: ListTileControlAffinity.leading,
@@ -198,7 +203,7 @@ class _MainState extends State<Main> {
                     ),
                     child: Text(tag),
                     onPressed: () {
-                      _setReadMode(tag, SearchMode.tag);
+                      _setReadMode(Search(tag, SearchMode.tag));
                       Navigator.pop(context);
                     },
                   ),
@@ -245,7 +250,7 @@ class _MainState extends State<Main> {
                 heroTag: "cancelEdit",
                 child: const Icon(Icons.cancel, size: 30),
                 backgroundColor: Colors.red[300],
-                onPressed: () => _setReadMode(_search, _searchMode),
+                onPressed: () => _setReadMode(_search),
               ),
             ),
           ),
@@ -319,6 +324,13 @@ class _MainState extends State<Main> {
             PlatformMenuItem(label: "Close DB File", onSelected: model.closeFile),
           ],
         ),
+        PlatformMenu(
+          label: "Navigate",
+          menus: [
+            PlatformMenuItem(label: "Back        ⌘[", onSelected: () => _runUndo(_undo, _redo)),
+            PlatformMenuItem(label: "Forward   ⌘]", onSelected:   () => _runUndo(_redo, _undo)),
+          ],
+        ),
       ],
       child: Shortcuts(
         shortcuts: {
@@ -332,6 +344,8 @@ class _MainState extends State<Main> {
           SingleActivator(LogicalKeyboardKey.escape):                                              EscapeIntent(),
           SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
           SingleActivator(LogicalKeyboardKey.f1):                                                  AboutIntent(),
+          SingleActivator(LogicalKeyboardKey.bracketLeft,  meta: isMacOS, control: !isMacOS):      UndoIntent(),
+          SingleActivator(LogicalKeyboardKey.bracketRight, meta: isMacOS, control: !isMacOS):      RedoIntent(),
           SingleActivator(LogicalKeyboardKey.keyQ, meta: isMacOS, control: !isMacOS):              CloseAppIntent(),
         },
         child: Actions(
@@ -343,9 +357,11 @@ class _MainState extends State<Main> {
             CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
             SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
-            EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search, _searchMode)),
+            EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
             GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
             AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
+            UndoIntent:           CallbackAction(onInvoke: (_) => _runUndo(_undo, _redo)),
+            RedoIntent:           CallbackAction(onInvoke: (_) => _runUndo(_redo, _undo)),
             CloseAppIntent:       CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts
@@ -369,7 +385,7 @@ class _MainState extends State<Main> {
                                   backgroundColor: WidgetStateProperty.all(Colors.brown[50])
                                 ),
                                 child: Text(tag),
-                                onPressed: () => _setReadMode(tag, SearchMode.tag),
+                                onPressed: () => _setReadMode(Search(tag, SearchMode.tag)),
                               ),
                             ),
                           )).toList();
@@ -386,7 +402,7 @@ class _MainState extends State<Main> {
                                   child: TextField(
                                     focusNode: _focusNodeSearch,
                                     decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
-                                    onSubmitted: (s) { _setReadMode(s, SearchMode.keyword); },
+                                    onSubmitted: (s) { _setReadMode(Search(s, SearchMode.keyword)); },
                                   ),
                                 ),
                               ]),
@@ -395,7 +411,7 @@ class _MainState extends State<Main> {
                                 value: model.showArchive,
                                 onChanged: (v) {
                                   model.setShowArchive(v ?? false);
-                                  _setReadMode(_search, _searchMode);
+                                  _setReadMode(_search);
                                 },
                                 controlAffinity: ListTileControlAffinity.leading,
                               ),
@@ -526,7 +542,7 @@ class _MainState extends State<Main> {
       await Utils.showAlert(h1, msg, IconStyle.information, style, onYes: () async {
         await model.restoreNoteById(note.id);
         _webDavLoading = model.uploadWebDav();
-        _setReadMode(_search, _searchMode);
+        _setReadMode(_search);
       });
       return;
     }
@@ -551,12 +567,12 @@ class _MainState extends State<Main> {
       case CustomButton.neutralButton:
         if (await model.archiveNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
-        _setReadMode(_search, _searchMode);
+        _setReadMode(_search);
         break;
       case CustomButton.negativeButton:
         if (await model.deleteNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
-        _setReadMode(_search, _searchMode);
+        _setReadMode(_search);
         break;
       default:
     }
@@ -580,17 +596,17 @@ class _MainState extends State<Main> {
           case archiveTitle:
             if (await model.archiveNoteById(note.id))
               _webDavLoading = model.uploadWebDav();
-            _setReadMode(_search, _searchMode);
+            _setReadMode(_search);
             break;
           case deleteTitle:
             if (await model.deleteNoteById(note.id))
               _webDavLoading = model.uploadWebDav();
-            _setReadMode(_search, _searchMode);
+            _setReadMode(_search);
             break;
           case restoreTitle:
             await model.restoreNoteById(note.id);
             _webDavLoading = model.uploadWebDav();
-            _setReadMode(_search, _searchMode);
+            _setReadMode(_search);
             break;
           default:
         }
@@ -627,7 +643,7 @@ class _MainState extends State<Main> {
     if (newId != null) {
       fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
       _webDavLoading = model.uploadWebDav();
-      _setReadMode(newId.toString(), SearchMode.id);
+      _setReadMode(Search(newId.toString(), SearchMode.id));
     } else _focusNodeTags.requestFocus();
 
     if (!isDesktop)
@@ -685,6 +701,16 @@ class _MainState extends State<Main> {
     }
   }
 
+  void _runUndo(TrixStack<Search> stack1, TrixStack<Search> stack2) {
+    final search = stack1.pop();
+    if (search != null) {
+      stack2.push(search);
+      if (search == _search)
+        _runUndo(stack1, stack2); // skip top element
+      else _setReadMode(search, pushToUndo: false);
+    }
+  }
+
   void _setEditMode(int? noteId, String text, String tags) {
     setState(() {
       _currentText.text = text;
@@ -693,20 +719,19 @@ class _MainState extends State<Main> {
       _oldTags = tags;
       _notes = [];
       _editorMode = EditorMode.edit;
-      /// _search = _search;
-      /// _searchMode = _searchMode;
+      /// _search = _search; (keep the same)
     });
     _focusNodeText.requestFocus();
   }
 
-  void _setReadMode(String search, SearchMode by) async {
+  void _setReadMode(Search sch, {bool pushToUndo = true}) async {
     final model = ScopedModel.of<TheModel>(context);
     final Iterable<Note> notes =
-      by == SearchMode.all     ? await model.getAllNotes() :
-      by == SearchMode.tag     ? await model.searchByTag(search) :
-      by == SearchMode.keyword ? await model.searchByKeyword(search) :
-      by == SearchMode.id      ? await model.searchById(int.tryParse(search) ?? 0).then((note) => [if (note != null) note]) :
-      by == SearchMode.random  ? await model.getRandomNotes(10) : [];
+      sch.by == SearchMode.all     ? await model.getAllNotes() :
+      sch.by == SearchMode.tag     ? await model.searchByTag(sch.search) :
+      sch.by == SearchMode.keyword ? await model.searchByKeyword(sch.search) :
+      sch.by == SearchMode.id      ? await model.searchById(int.tryParse(sch.search) ?? 0).then((note) => [if (note != null) note]) :
+      sch.by == SearchMode.random  ? await model.getRandomNotes(10) : [];
 
     setState(() {
       _currentText.text = "";
@@ -715,9 +740,12 @@ class _MainState extends State<Main> {
       _oldTags = "";
       _notes = notes;
       _editorMode = EditorMode.read;
-      _search = search;
-      _searchMode = by;
+      _search = sch;
     });
+
+    if (pushToUndo && _undo.peek() != sch)
+      _undo.push(sch);                  // push to history
+
     _focusNodeGlobal.requestFocus();    // w/o this, shortcuts won't work, we need to focus something
   }
 
@@ -732,6 +760,14 @@ class _MainState extends State<Main> {
 enum EditorMode { read, edit }
 enum SearchMode { all, tag, keyword, id, random }
 
+class Search { // case class Search(String search, SearchMode by)
+  final String search; final SearchMode by; Search(this.search, this.by);
+  @override bool operator ==(Object o) =>
+      identical(this,o) || o is Search && runtimeType == o.runtimeType && search == o.search && by == o.by;
+  @override int get hashCode => Object.hash(search, by);
+  @override String toString() => '{search: $search, by: $by}';
+}
+
 class NewDbFileIntent      extends Intent {}
 class NewDbxFileIntent     extends Intent {}
 class OpenDbFileIntent     extends Intent {}
@@ -742,4 +778,6 @@ class SaveNoteIntent       extends Intent {}
 class EscapeIntent         extends Intent {}
 class GlobalSearchIntent   extends Intent {}
 class AboutIntent          extends Intent {}
+class UndoIntent           extends Intent {}
+class RedoIntent           extends Intent {}
 class CloseAppIntent       extends Intent {}
