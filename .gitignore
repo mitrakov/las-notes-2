@@ -1,6 +1,3 @@
-# by Tommy
-.idea/
-
 # Miscellaneous
 *.class
 *.lock
@@ -122,4 +119,6 @@ app.*.symbols
 !/dev/ci/**/Gemfile.lock
 
 # tommy
+.idea/
 android.iml
+.DS_Store
