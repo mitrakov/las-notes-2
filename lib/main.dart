@@ -160,6 +160,8 @@ class _MainState extends State<Main> {
         title: const Text("Las Notes", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
+          IconButton(onPressed: () => _runUndo(_undo, _redo), icon: const Icon(Icons.chevron_left)),
+          IconButton(onPressed: () => _runUndo(_redo, _undo), icon: const Icon(Icons.chevron_right)),
           IconButton(onPressed: _shareFile, icon: const Icon(Icons.ios_share)),
           IconButton(onPressed: _showAboutDialog, icon: const Icon(Icons.info_outline)),
         ],
@@ -261,7 +263,7 @@ class _MainState extends State<Main> {
               child: FloatingActionButton(
                 heroTag: "openFile",
                 child: const Icon(Icons.download, size: 28),
-                backgroundColor: Colors.brown[300],
+                backgroundColor: Colors.brown[400],
                 onPressed: () => model.openFileWithDialog(context),
               ),
             ),
@@ -285,7 +287,7 @@ class _MainState extends State<Main> {
               child: FloatingActionButton(
                 heroTag: "closeFile",
                 child: const Icon(Icons.stop_circle_outlined, size: 32),
-                backgroundColor: Colors.red[300],
+                backgroundColor: Colors.red[400],
                 onPressed: _closeFile,
               ),
             ),
@@ -507,7 +509,8 @@ class _MainState extends State<Main> {
             autofocus: true,
             keyboardType: TextInputType.multiline,
             maxLines: 128, // only for sizing widget (it's not a real limit of lines)
-            autocorrect: false,
+            autocorrect: true,        // T9 hints for iOS
+            enableSuggestions: false, // Android only
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
           )),
           Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text, shrinkWrap: true))),
