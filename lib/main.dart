@@ -124,8 +124,8 @@ class _MainState extends State<Main> {
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
   Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
-  var _undo = TrixStack<Search>();              // UNDO stack history
-  var _redo = TrixStack<Search>();              // REDO stack history
+  var _back = TrixStack<Search>();              // ⬅️ stack history
+  var _forward = TrixStack<Search>();           // ➡️ stack history
 
   bool get fileChanged => _fileChanged;
   set fileChanged(bool v) {
@@ -144,8 +144,8 @@ class _MainState extends State<Main> {
     return ScopedModelDescendant<TheModel>(builder: (context, child, model) {
       if (_currentPath != model.currentPath) { // new file opened
         _currentPath = model.currentPath;
-        _undo.clear();
-        _redo.clear();
+        _back.clear();
+        _forward.clear();
         _setReadMode(Search("", SearchMode.all));
         if (isDesktop)
           windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes");
@@ -160,8 +160,8 @@ class _MainState extends State<Main> {
         title: const Text("Las Notes", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          IconButton(onPressed: () => _runUndo(_undo, _redo), icon: const Icon(Icons.chevron_left)),
-          IconButton(onPressed: () => _runUndo(_redo, _undo), icon: const Icon(Icons.chevron_right)),
+          IconButton(onPressed: () => _history(_back, _forward), icon: const Icon(Icons.chevron_left)),
+          IconButton(onPressed: () => _history(_forward, _back), icon: const Icon(Icons.chevron_right)),
           IconButton(onPressed: _shareFile, icon: const Icon(Icons.ios_share)),
           IconButton(onPressed: _showAboutDialog, icon: const Icon(Icons.info_outline)),
         ],
@@ -327,10 +327,21 @@ class _MainState extends State<Main> {
           ],
         ),
         PlatformMenu(
+          label: "Edit",
+          menus: [
+            PlatformMenuItem(label: " ᎒᎒᎒  Insert Table", onSelected: () =>
+                Utils.insertText(_currentText, "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n")),
+            PlatformMenuItem(label: "🔗 Insert Link", onSelected: () =>
+                Utils.insertText(_currentText, "[Link](https://)\n")),
+            PlatformMenuItem(label: "🕓 Insert DateTime", onSelected: () =>
+                Utils.insertText(_currentText, "${DateTime.now().toString().substring(0, 19)}\n")),
+          ],
+        ),
+        PlatformMenu(
           label: "Navigate",
           menus: [
-            PlatformMenuItem(label: "Back        ⌘[", onSelected: () => _runUndo(_undo, _redo)),
-            PlatformMenuItem(label: "Forward   ⌘]", onSelected:   () => _runUndo(_redo, _undo)),
+            PlatformMenuItem(label: "⬅️ Back         ⌘[", onSelected: () => _history(_back, _forward), ),
+            PlatformMenuItem(label: "➡️ Forward    ⌘]", onSelected:   () => _history(_forward, _back)),
           ],
         ),
       ],
@@ -362,8 +373,8 @@ class _MainState extends State<Main> {
             EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
             GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
             AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
-            UndoIntent:           CallbackAction(onInvoke: (_) => _runUndo(_undo, _redo)),
-            RedoIntent:           CallbackAction(onInvoke: (_) => _runUndo(_redo, _undo)),
+            UndoIntent:           CallbackAction(onInvoke: (_) => _history(_back, _forward)),
+            RedoIntent:           CallbackAction(onInvoke: (_) => _history(_forward, _back)),
             CloseAppIntent:       CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts
@@ -704,13 +715,13 @@ class _MainState extends State<Main> {
     }
   }
 
-  void _runUndo(TrixStack<Search> stack1, TrixStack<Search> stack2) {
+  void _history(TrixStack<Search> stack1, TrixStack<Search> stack2) {
     final search = stack1.pop();
     if (search != null) {
       stack2.push(search);
       if (search == _search)
-        _runUndo(stack1, stack2); // skip top element
-      else _setReadMode(search, pushToUndo: false);
+        _history(stack1, stack2); // skip top element in history
+      else _setReadMode(search, pushToHistory: false);
     }
   }
 
@@ -727,7 +738,7 @@ class _MainState extends State<Main> {
     _focusNodeText.requestFocus();
   }
 
-  void _setReadMode(Search sch, {bool pushToUndo = true}) async {
+  void _setReadMode(Search sch, {bool pushToHistory = true}) async {
     final model = ScopedModel.of<TheModel>(context);
     final Iterable<Note> notes =
       sch.by == SearchMode.all     ? await model.getAllNotes() :
@@ -746,8 +757,8 @@ class _MainState extends State<Main> {
       _search = sch;
     });
 
-    if (pushToUndo && _undo.peek() != sch)
-      _undo.push(sch);                  // push to history
+    if (pushToHistory && _back.peek() != sch)
+      _back.push(sch);                  // push to history
 
     _focusNodeGlobal.requestFocus();    // w/o this, shortcuts won't work, we need to focus something
   }

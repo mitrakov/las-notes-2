@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 
 class Utils {
@@ -36,5 +36,14 @@ class Utils {
         onNo?.call();
         return false;
     }
+  }
+
+  static void insertText(TextEditingController ctrl, String value) {
+    final pos = ctrl.selection.start;
+    final text = ctrl.text;
+    final start = text.substring(0, pos);
+    final end = text.substring(pos);
+    ctrl.text = "$start$value$end";
+    ctrl.selection = TextSelection.collapsed(offset: pos + value.length);
   }
 }
