@@ -329,24 +329,41 @@ class _MainState extends State<Main> {
         PlatformMenu(
           label: "Edit",
           menus: [
-            PlatformMenuItem(label: " ᎒᎒᎒  Insert Table", onSelected: () =>
-                Utils.insertText(_currentText, "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n")),
-            PlatformMenuItem(label: "🔗 Insert Link", onSelected: () =>
-                Utils.insertText(_currentText, "[Link](https://)\n")),
-            PlatformMenuItem(label: "🕓 Insert DateTime", onSelected: () =>
-                Utils.insertText(_currentText, "${DateTime.now().toString().substring(0, 19)}\n")),
+            PlatformMenuItem(
+              label: " ᎒᎒᎒  Insert Table",
+              onSelected: () => Utils.insertText(_currentText, "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n"),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyT, meta: isMacOS, control: !isMacOS, shift: true),
+            ),
+            PlatformMenuItem(
+              label: "🔗 Insert Link",
+              onSelected: () => Utils.insertText(_currentText, "[Link](https://)\n"),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyL, meta: isMacOS, control: !isMacOS, shift: true),
+            ),
+            PlatformMenuItem(
+              label: "🕓 Insert DateTime",
+              onSelected: () => Utils.insertText(_currentText, "${DateTime.now().toString().substring(0, 19)}\n"),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyD, meta: isMacOS, control: !isMacOS, shift: true),
+            )
           ],
         ),
         PlatformMenu(
           label: "Navigate",
           menus: [
-            PlatformMenuItem(label: "⬅️ Back         ⌘[", onSelected: () => _history(_back, _forward), ),
-            PlatformMenuItem(label: "➡️ Forward    ⌘]", onSelected:   () => _history(_forward, _back)),
+            PlatformMenuItem(
+              label: "⬅️ Back",
+              onSelected: () => _history(_back, _forward),
+              shortcut: SingleActivator(LogicalKeyboardKey.bracketLeft, meta: isMacOS, control: !isMacOS),
+            ),
+            PlatformMenuItem(
+              label: "➡️ Forward",
+              onSelected: () => _history(_forward, _back),
+              shortcut: SingleActivator(LogicalKeyboardKey.bracketRight, meta: isMacOS, control: !isMacOS),
+            ),
           ],
         ),
       ],
       child: Shortcuts(
-        shortcuts: {
+        shortcuts: { // TODO move to PlatformMenuItem and check on Windows/Linux
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS, shift: true): NewDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyE, meta: isMacOS, control: !isMacOS, shift: true): NewDbxFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS, shift: true): OpenWebDavFileIntent(),
@@ -357,8 +374,6 @@ class _MainState extends State<Main> {
           SingleActivator(LogicalKeyboardKey.escape):                                              EscapeIntent(),
           SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
           SingleActivator(LogicalKeyboardKey.f1):                                                  AboutIntent(),
-          SingleActivator(LogicalKeyboardKey.bracketLeft,  meta: isMacOS, control: !isMacOS):      UndoIntent(),
-          SingleActivator(LogicalKeyboardKey.bracketRight, meta: isMacOS, control: !isMacOS):      RedoIntent(),
           SingleActivator(LogicalKeyboardKey.keyQ, meta: isMacOS, control: !isMacOS):              CloseAppIntent(),
         },
         child: Actions(
@@ -373,8 +388,6 @@ class _MainState extends State<Main> {
             EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
             GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
             AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
-            UndoIntent:           CallbackAction(onInvoke: (_) => _history(_back, _forward)),
-            RedoIntent:           CallbackAction(onInvoke: (_) => _history(_forward, _back)),
             CloseAppIntent:       CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts
@@ -792,6 +805,4 @@ class SaveNoteIntent       extends Intent {}
 class EscapeIntent         extends Intent {}
 class GlobalSearchIntent   extends Intent {}
 class AboutIntent          extends Intent {}
-class UndoIntent           extends Intent {}
-class RedoIntent           extends Intent {}
 class CloseAppIntent       extends Intent {}
