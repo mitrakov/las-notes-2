@@ -107,6 +107,9 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
+  static const _tableStr = "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n";
+  static const _linkStr = "[Link](https://)\n";
+
   final _focusNodeGlobal = FocusNode();         // main global focus for the whole desktop app (to get shortcuts working)
   final _focusNodeText = FocusNode();           // main text focus
   final _focusNodeTags = FocusNode();           // comma-separated tags focus
@@ -127,6 +130,7 @@ class _MainState extends State<Main> {
   var _back = TrixStack<Search>();              // ⬅️ stack history
   var _forward = TrixStack<Search>();           // ➡️ stack history
 
+  String get _nowStr => "${DateTime.now().toString().substring(0, 19)}\n";
   bool get fileChanged => _fileChanged;
   set fileChanged(bool v) {
     if (Platform.isIOS && !ScopedModel.of<TheModel>(context).webDav.isConnected) // for WebDAV, it's OK
@@ -301,7 +305,10 @@ class _MainState extends State<Main> {
     final settings = Settings.local;
     final isMacOS = Platform.isMacOS;
     return PlatformMenuBar(
+      // This menu is only for MacOS. Use only "onSelectedIntent" (do NOT use "onSelected") in order to get working on Windows/Linux
+      // Shortcuts are specified only to draw leading "⌘N" on MacOS menu items (all logic is done through intents)
       menus: [ // TODO: create menu for Windows/Linux
+        // TODO: switch to onSelectedIntent everywhere
         PlatformMenu(
           label: "",
           menus: [
@@ -331,18 +338,18 @@ class _MainState extends State<Main> {
           menus: [
             PlatformMenuItem(
               label: " ᎒᎒᎒  Insert Table",
-              onSelected: () => Utils.insertText(_currentText, "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n"),
-              shortcut: SingleActivator(LogicalKeyboardKey.keyT, meta: isMacOS, control: !isMacOS, shift: true),
+              onSelectedIntent: InsertTableIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyT, meta: true, shift: true),
             ),
             PlatformMenuItem(
               label: "🔗 Insert Link",
-              onSelected: () => Utils.insertText(_currentText, "[Link](https://)\n"),
-              shortcut: SingleActivator(LogicalKeyboardKey.keyL, meta: isMacOS, control: !isMacOS, shift: true),
+              onSelectedIntent: InsertLinkIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyL, meta: true, shift: true),
             ),
             PlatformMenuItem(
               label: "🕓 Insert DateTime",
-              onSelected: () => Utils.insertText(_currentText, "${DateTime.now().toString().substring(0, 19)}\n"),
-              shortcut: SingleActivator(LogicalKeyboardKey.keyD, meta: isMacOS, control: !isMacOS, shift: true),
+              onSelectedIntent: InsertDateIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyD, meta: true, shift: true),
             )
           ],
         ),
@@ -351,13 +358,13 @@ class _MainState extends State<Main> {
           menus: [
             PlatformMenuItem(
               label: "⬅️ Back",
-              onSelected: () => _history(_back, _forward),
-              shortcut: SingleActivator(LogicalKeyboardKey.bracketLeft, meta: isMacOS, control: !isMacOS),
+              onSelectedIntent: BackIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true),
             ),
             PlatformMenuItem(
               label: "➡️ Forward",
-              onSelected: () => _history(_forward, _back),
-              shortcut: SingleActivator(LogicalKeyboardKey.bracketRight, meta: isMacOS, control: !isMacOS),
+              onSelectedIntent: ForwardIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.bracketRight, meta: true),
             ),
           ],
         ),
@@ -367,27 +374,37 @@ class _MainState extends State<Main> {
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS, shift: true): NewDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyE, meta: isMacOS, control: !isMacOS, shift: true): NewDbxFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS, shift: true): OpenWebDavFileIntent(),
+          SingleActivator(LogicalKeyboardKey.keyT, meta: isMacOS, control: !isMacOS, shift: true): InsertTableIntent(),
+          SingleActivator(LogicalKeyboardKey.keyL, meta: isMacOS, control: !isMacOS, shift: true): InsertLinkIntent(),
+          SingleActivator(LogicalKeyboardKey.keyD, meta: isMacOS, control: !isMacOS, shift: true): InsertDateIntent(),
+          SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS):              OpenDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyW, meta: isMacOS, control: !isMacOS):              CloseDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS):              NewNoteIntent(),
           SingleActivator(LogicalKeyboardKey.keyS, meta: isMacOS, control: !isMacOS):              SaveNoteIntent(),
           SingleActivator(LogicalKeyboardKey.escape):                                              EscapeIntent(),
-          SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
           SingleActivator(LogicalKeyboardKey.f1):                                                  AboutIntent(),
+          SingleActivator(LogicalKeyboardKey.bracketLeft,  meta: isMacOS, control: !isMacOS):      BackIntent(),
+          SingleActivator(LogicalKeyboardKey.bracketRight, meta: isMacOS, control: !isMacOS):      ForwardIntent(),
           SingleActivator(LogicalKeyboardKey.keyQ, meta: isMacOS, control: !isMacOS):              CloseAppIntent(),
         },
         child: Actions(
           actions: {
             NewDbFileIntent:      CallbackAction(onInvoke: (_) => model.newFile(context)),
             NewDbxFileIntent:     CallbackAction(onInvoke: (_) => model.newFile(context, encrypted: true)),
-            OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
             OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => _showWebDavDialogDesktop()),
+            InsertTableIntent:    CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _tableStr)),
+            InsertLinkIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _linkStr)),
+            InsertDateIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _nowStr)),
+            GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
+            OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
             CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
             SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
             EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
-            GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
             AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
+            BackIntent:           CallbackAction(onInvoke: (_) => _history(_back, _forward)),
+            ForwardIntent:        CallbackAction(onInvoke: (_) => _history(_forward, _back)),
             CloseAppIntent:       CallbackAction(onInvoke: (_) => exit(0)),
           },
           child: Focus(               // needed for Shortcuts
@@ -805,4 +822,9 @@ class SaveNoteIntent       extends Intent {}
 class EscapeIntent         extends Intent {}
 class GlobalSearchIntent   extends Intent {}
 class AboutIntent          extends Intent {}
+class BackIntent           extends Intent {}
+class ForwardIntent        extends Intent {}
+class InsertTableIntent    extends Intent {}
+class InsertDateIntent     extends Intent {}
+class InsertLinkIntent     extends Intent {}
 class CloseAppIntent       extends Intent {}
