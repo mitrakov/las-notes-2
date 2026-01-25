@@ -7,7 +7,6 @@ import 'package:path/path.dart' show basename;
 import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
-import 'package:markdown_widget/markdown_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
@@ -482,7 +481,7 @@ class _MainState extends State<Main> {
                                 decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
                               ),
                             )),
-                            Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
+                            Expanded(child: TrixContainer(child: Collapsible(_currentText.text, expanded: true))),
                           ])
                         : FutureBuilder(
                             future: _makeMainAreaDesktop(),
@@ -549,12 +548,12 @@ class _MainState extends State<Main> {
             focusNode: _focusNodeText,
             autofocus: true,
             keyboardType: TextInputType.multiline,
-            maxLines: 128, // only for sizing widget (it's not a real limit of lines)
+            maxLines: 128,            // only for sizing widget (it's not a real limit of lines)
             autocorrect: true,        // T9 hints for iOS
             enableSuggestions: false, // Android only
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
           )),
-          Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text, shrinkWrap: true))),
+          Expanded(child: TrixContainer(child: Collapsible(_currentText.text, expanded: true))),
           Row(children: [
             const Text("Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
             Expanded(child: Padding(
