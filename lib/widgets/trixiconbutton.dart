@@ -123,15 +123,15 @@ class TrixIconTextButton extends ButtonStyleButton {
       textStyle: theme.textTheme.labelLarge,
       padding: _scaledPadding(context),
       minimumSize: const Size(64, 36),
-      maximumSize: Size.infinite,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+      maximumSize: .infinite,
+      shape: const RoundedRectangleBorder(borderRadius: .all(.circular(4))),
       enabledMouseCursor: SystemMouseCursors.click,
       disabledMouseCursor: SystemMouseCursors.basic,
       visualDensity: theme.visualDensity,
       tapTargetSize: theme.materialTapTargetSize,
       animationDuration: kThemeChangeDuration,
       enableFeedback: true,
-      alignment: Alignment.center,
+      alignment: .center,
       splashFactory: InkRipple.splashFactory,
     );
   }
@@ -149,9 +149,9 @@ EdgeInsetsGeometry _scaledPadding(BuildContext context) {
   final double defaultFontSize = theme.textTheme.labelLarge?.fontSize ?? 14.0;
   final double effectiveTextScale = MediaQuery.textScalerOf(context).scale(defaultFontSize) / 14.0;
   return ButtonStyleButton.scaledPadding(
-    theme.useMaterial3 ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8) :  const EdgeInsets.all(8),
-    const EdgeInsets.symmetric(horizontal: 8),
-    const EdgeInsets.symmetric(horizontal: 4),
+    theme.useMaterial3 ? const .symmetric(horizontal: 12, vertical: 8) : const .all(8),
+    const .symmetric(horizontal: 8),
+    const .symmetric(horizontal: 4),
     effectiveTextScale,
   );
 }
@@ -267,9 +267,9 @@ class _TextButtonWithIcon extends TrixIconTextButton {
     final double defaultFontSize = buttonStyle.textStyle?.resolve(const <MaterialState>{})?.fontSize ?? 14.0;
     final double effectiveTextScale = MediaQuery.textScalerOf(context).scale(defaultFontSize) / 14.0;
     final EdgeInsetsGeometry scaledPadding = ButtonStyleButton.scaledPadding(
-      useMaterial3 ? const EdgeInsetsDirectional.fromSTEB(12, 8, 16, 8) : const EdgeInsets.all(8),
-      const EdgeInsets.symmetric(horizontal: 4),
-      const EdgeInsets.symmetric(horizontal: 4),
+      useMaterial3 ? const .fromSTEB(12, 8, 16, 8) : const .all(8),
+      const .symmetric(horizontal: 4),
+      const .symmetric(horizontal: 4),
       effectiveTextScale,
     );
     return buttonStyle.copyWith(
@@ -291,10 +291,7 @@ class _TextButtonWithIconChild extends StatelessWidget {
   Widget build(BuildContext context) {
     final double scale = MediaQuery.textScalerOf(context).textScaleFactor;
     final double gap = scale <= 1 ? 8 : lerpDouble(8, 4, math.min(scale - 1, 1))!;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[icon, SizedBox(width: gap), Flexible(child: label)],
-    );
+    return Column(mainAxisSize: .min, children: <Widget>[icon, SizedBox(width: gap), Flexible(child: label)]);
   }
 }
 
@@ -303,7 +300,7 @@ class _TextButtonDefaultsM3 extends ButtonStyle {
       : super(
     animationDuration: kThemeChangeDuration,
     enableFeedback: true,
-    alignment: Alignment.center,
+    alignment: .center,
   );
 
   final BuildContext context;

@@ -96,7 +96,7 @@ class LaApp extends StatelessWidget {
     return MaterialApp(
       title: "Las Notes",
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo), useMaterial3: true),
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.indigo), useMaterial3: true),
       home: Main(),
     );
   }
@@ -122,8 +122,8 @@ class _MainState extends State<Main> {
   int? _currentNoteId;                          // if present, noteID in edit mode (otherwise NEW_NOTE mode)
   var _oldTags = "";                            // old comma-separated tags for edit mode (to calc tags diff)
   Iterable<Note> _notes = [];                   // in view mode, DB notes array for markdown view
-  var _search = Search("", SearchMode.all);     // search by tag name (.tag), keyword (.keyword), ID (.id) or all (.all)
-  var _editorMode = EditorMode.edit;            // edit or view mode
+  var _search = Search("", .all);               // search by tag name (.tag), keyword (.keyword), ID (.id) or all (.all)
+  EditorMode _editorMode = .edit;               // edit or view mode
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
   Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
@@ -150,7 +150,7 @@ class _MainState extends State<Main> {
         _currentPath = model.currentPath;
         _back.clear();
         _forward.clear();
-        _setReadMode(Search("", SearchMode.all));
+        _setReadMode(Search("", .all));
         if (isDesktop)
           windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes");
       }
@@ -161,7 +161,7 @@ class _MainState extends State<Main> {
   Widget _buildForMobile(BuildContext context, TheModel model) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Las Notes", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Las Notes", style: TextStyle(fontWeight: .bold)),
         centerTitle: true,
         actions: [
           IconButton(onPressed: () => _history(_back, _forward), icon: const Icon(Icons.chevron_left)),
@@ -172,10 +172,10 @@ class _MainState extends State<Main> {
       ),
       body: model.currentPath == null
         ? const Center(child: Text("Welcome!\nOpen a DB file"))
-        : Padding(padding: const EdgeInsets.all(8.0), child: _makeMainAreaMobile(model)),
+        : Padding(padding: const .all(8.0), child: _makeMainAreaMobile(model)),
       drawer: Drawer(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const .all(8.0),
           child: Column(children: [
             const SizedBox(height: 50),
             TextField(
@@ -183,7 +183,7 @@ class _MainState extends State<Main> {
               focusNode: _focusNodeSearch,
               decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
               onSubmitted: (s) {
-                _setReadMode(Search(s, SearchMode.keyword));
+                _setReadMode(Search(s, .keyword));
                 Navigator.pop(context);
               },
             ),
@@ -195,21 +195,21 @@ class _MainState extends State<Main> {
                 _setReadMode(_search);
                 Navigator.pop(context);
               },
-              controlAffinity: ListTileControlAffinity.leading,
+              controlAffinity: .leading,
             ),
             const SizedBox(height: 10),
-            const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: .bold)),
             FutureBuilder(future: model.getTags(), builder: (context, snapshot) {
               if (snapshot.hasData)
                 return Expanded(child: ListView(children: snapshot.data!.map((tag) =>
                   OutlinedButton(
                     style: ButtonStyle(
-                      alignment: Alignment.centerLeft,
+                      alignment: .centerLeft,
                       backgroundColor: WidgetStateProperty.all(Colors.brown[50])
                     ),
                     child: Text(tag),
                     onPressed: () {
-                      _setReadMode(Search(tag, SearchMode.tag));
+                      _setReadMode(Search(tag, .tag));
                       Navigator.pop(context);
                     },
                   ),
@@ -220,14 +220,14 @@ class _MainState extends State<Main> {
         ),
       ),
       floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: .min,
+        crossAxisAlignment: .end,
         children: [
           _webDavProgressIndicator(),
           Visibility(
-            visible: model.currentPath != null && _editorMode == EditorMode.read,
+            visible: model.currentPath != null && _editorMode == .read,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const .all(8.0),
               child: FloatingActionButton(
                 heroTag: "newNote",
                 child: const Icon(Icons.note_add_outlined, size: 32),
@@ -237,9 +237,9 @@ class _MainState extends State<Main> {
             ),
           ),
           Visibility(
-            visible: model.currentPath != null && _editorMode == EditorMode.edit,
+            visible: model.currentPath != null && _editorMode == .edit,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const .all(8.0),
               child: FloatingActionButton(
                 heroTag: "saveNote",
                 child: const Icon(Icons.domain_verification, size: 32),
@@ -249,9 +249,9 @@ class _MainState extends State<Main> {
             ),
           ),
           Visibility(
-            visible: model.currentPath != null && _editorMode == EditorMode.edit,
+            visible: model.currentPath != null && _editorMode == .edit,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const .all(8.0),
               child: FloatingActionButton(
                 heroTag: "cancelEdit",
                 child: const Icon(Icons.cancel, size: 30),
@@ -263,7 +263,7 @@ class _MainState extends State<Main> {
           Visibility(
             visible: model.currentPath == null,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const .all(8.0),
               child: FloatingActionButton(
                 heroTag: "openFile",
                 child: const Icon(Icons.download, size: 28),
@@ -275,7 +275,7 @@ class _MainState extends State<Main> {
           Visibility(
             visible: model.currentPath == null,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const .all(8.0),
               child: FloatingActionButton(
                 heroTag: "openWebDav",
                 child: const Icon(Icons.cloud_download_outlined, size: 36),
@@ -285,9 +285,9 @@ class _MainState extends State<Main> {
             ),
           ),
           Visibility(
-            visible: model.currentPath != null && _editorMode == EditorMode.read,
+            visible: model.currentPath != null && _editorMode == .read,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const .all(8.0),
               child: FloatingActionButton(
                 heroTag: "closeFile",
                 child: const Icon(Icons.stop_circle_outlined, size: 32),
@@ -419,21 +419,21 @@ class _MainState extends State<Main> {
                       builder: (context, snapshot) {
                         if (snapshot.hasData) {
                           final tags = snapshot.data!.map((tag) => Padding(
-                            padding: const EdgeInsets.only(top: 2), // Tag button on the left side
+                            padding: const .only(top: 2), // Tag button on the left side
                             child: Padding( // TODO to method
-                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              padding: const .symmetric(vertical: 2),
                               child: OutlinedButton(
                                 style: ButtonStyle(
-                                  alignment: Alignment.centerLeft,
+                                  alignment: .centerLeft,
                                   backgroundColor: WidgetStateProperty.all(Colors.brown[50])
                                 ),
                                 child: Text(tag),
-                                onPressed: () => _setReadMode(Search(tag, SearchMode.tag)),
+                                onPressed: () => _setReadMode(Search(tag, .tag)),
                               ),
                             ),
                           )).toList();
 
-                          return ListView(padding: const EdgeInsets.all(6),
+                          return ListView(padding: const .all(6),
                             children: [
                               Row(children: [
                                 TrixIconTextButton.icon(
@@ -445,7 +445,7 @@ class _MainState extends State<Main> {
                                   child: TextField(
                                     focusNode: _focusNodeSearch,
                                     decoration: const InputDecoration(border: OutlineInputBorder(), label: Text("Global search")),
-                                    onSubmitted: (s) { _setReadMode(Search(s, SearchMode.keyword)); },
+                                    onSubmitted: (s) { _setReadMode(Search(s, .keyword)); },
                                   ),
                                 ),
                               ]),
@@ -456,9 +456,9 @@ class _MainState extends State<Main> {
                                   model.setShowArchive(v ?? false);
                                   _setReadMode(_search);
                                 },
-                                controlAffinity: ListTileControlAffinity.leading,
+                                controlAffinity: .leading,
                               ),
-                              const Text("TAGS", textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              const Text("TAGS", textAlign: .center, style: TextStyle(fontSize: 20, fontWeight: .bold)),
                               ...tags,
                             ]);
                         } else return const CircularProgressIndicator();
@@ -468,18 +468,18 @@ class _MainState extends State<Main> {
                   Flexible( // main window
                     flex: 5,
                     child: Column(children: [ // [top: edit/render panels, bottom: edit-tags/buttons panels]
-                      Expanded(child: _editorMode == EditorMode.edit
+                      Expanded(child: _editorMode == .edit
                         ? Row(children: [ // [left: edit panel, right: render panel]
                             Expanded(child: Padding(
-                              padding: const EdgeInsets.all(2),
+                              padding: const .all(2),
                               child: TextField(
                                 controller: _currentText,
                                 focusNode: _focusNodeText,
                                 autofocus: true,
-                                keyboardType: TextInputType.multiline,
+                                keyboardType: .multiline,
                                 maxLines: 128, // only for sizing widget (it's not a real limit of lines)
                                 autocorrect: false,
-                                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
+                                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: .circular(6))),
                               ),
                             )),
                             Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
@@ -490,10 +490,10 @@ class _MainState extends State<Main> {
                           ),
                       ),
                       Visibility(
-                        visible: _editorMode == EditorMode.edit,
+                        visible: _editorMode == .edit,
                         child: Row(children: [
                           Padding(
-                            padding: const EdgeInsets.all(4),
+                            padding: const .all(4),
                             child: SizedBox(
                               width: 400,
                               child: TextField(
@@ -501,7 +501,7 @@ class _MainState extends State<Main> {
                                 focusNode: _focusNodeTags,
                                 decoration: const InputDecoration(
                                   label: Text("Tags:"),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                                  border: const OutlineInputBorder(borderRadius: .all(.circular(10))),
                                   hintText: "Tag1, Tag2, ..."
                                 ),
                                 onEditingComplete: _saveNote,
@@ -533,35 +533,35 @@ class _MainState extends State<Main> {
 
   Widget _makeMainAreaMobile(TheModel model) {
     switch (_editorMode) {
-      case EditorMode.read:
+      case .read:
         return ListView(children: _notes.map((note) => TrixContainer(child: GestureDetector(
           onLongPress: () => _contextMenuMobile(note), // doesn't work on iOS (=> also use DoubleTap)
           onDoubleTap: () => _contextMenuMobile(note),
           child: Opacity(opacity: note.isDeleted ? 0.67 : 1, child: Collapsible(note))))).toList()
         );
-      case EditorMode.edit:
+      case .edit:
         return Column(children: [
           Expanded(child: TextField( // TODO reuse
             controller: _currentText,
             focusNode: _focusNodeText,
             autofocus: true,
-            keyboardType: TextInputType.multiline,
+            keyboardType: .multiline,
             maxLines: 128,            // only for sizing widget (it's not a real limit of lines)
             autocorrect: true,        // T9 hints for iOS
             enableSuggestions: false, // Android only
-            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
+            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: .circular(6))),
           )),
           Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
           Row(children: [
-            const Text("Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text("Tags:", style: TextStyle(fontWeight: .bold)),
             Expanded(child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const .symmetric(horizontal: 8.0),
               child: TextField(
                 controller: _currentTags,
                 focusNode: _focusNodeTags,
                 autocorrect: false,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(1)),
+                  border: OutlineInputBorder(borderRadius: .circular(1)),
                   hintText: "Tag1, Tag2, ...",
                 ),
               ),
@@ -579,8 +579,7 @@ class _MainState extends State<Main> {
     if (note.isDeleted) {
       const h1 = "Restore";
       const msg = "Restore note from archive?";
-      const style = AlertButtonStyle.yesNo;
-      await Utils.showAlert(h1, msg, IconStyle.information, style, onYes: () async {
+      await Utils.showAlert(h1, msg, .information, .yesNo, onYes: () async {
         await model.restoreNoteById(note.id);
         _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
@@ -592,12 +591,12 @@ class _MainState extends State<Main> {
     final result = await FlutterPlatformAlert.showCustomAlert(
       windowTitle: "Update note",
       text: Utils.firstLine(note.data),
-      iconStyle: IconStyle.question,
+      iconStyle: .question,
       positiveButtonTitle: "Edit",
       neutralButtonTitle: "Archive",
       negativeButtonTitle: "Delete",
       options: PlatformAlertOptions(
-        ios: IosAlertOptions(negativeButtonStyle: IosButtonStyle.destructive),
+        ios: IosAlertOptions(negativeButtonStyle: .destructive),
         // TODO Android?
       ),
     );
@@ -663,7 +662,7 @@ class _MainState extends State<Main> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting)
           return Opacity(opacity: 0.3,
-            child: const Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+            child: const Column(mainAxisAlignment: .end, children: [
               Text("WebDAV", style: TextStyle(color: Colors.purple)),
               CircularProgressIndicator(color: Colors.purple),
             ]),
@@ -681,7 +680,7 @@ class _MainState extends State<Main> {
     if (newId != null) {
       fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
       _webDavLoading = model.uploadWebDav();
-      _setReadMode(Search(newId.toString(), SearchMode.id));
+      _setReadMode(Search(newId.toString(), .id));
     } else _focusNodeTags.requestFocus();
 
     if (!isDesktop)
@@ -693,14 +692,14 @@ class _MainState extends State<Main> {
     if (fileChanged) {
       const header = "DB file is not exported";
       const msg = "On iOS you have to share this file to external storage. Do you want to share?";
-      Utils.showAlert(header, msg, IconStyle.information, AlertButtonStyle.yesNoCancel, onYes: _shareFile, onNo: model.closeFile);
+      Utils.showAlert(header, msg, .information, .yesNoCancel, onYes: _shareFile, onNo: model.closeFile);
     } else model.closeFile();
   }
 
   void _showAboutDialog() async {
     final i = await PackageInfo.fromPlatform();
     final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2026\nmitrakov-artem@yandex.ru\nAll rights reserved.";
-    Utils.showAlert(i.appName, text, IconStyle.information, AlertButtonStyle.ok);
+    Utils.showAlert(i.appName, text, .information, .ok);
   }
 
   void _showWebDavDialogDesktop() {
@@ -709,7 +708,7 @@ class _MainState extends State<Main> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: .circular(20)),
           backgroundColor: Theme.of(context).colorScheme.surface,
           content: SizedBox(width: 400, child: WebDavView(model.webDav, (path) => _webDavOpenPath(context, path))),
         );
@@ -756,7 +755,7 @@ class _MainState extends State<Main> {
       _currentNoteId = noteId;
       _oldTags = tags;
       _notes = [];
-      _editorMode = EditorMode.edit;
+      _editorMode = .edit;
       /// _search = _search; (keep the same)
     });
     _focusNodeText.requestFocus();
@@ -765,11 +764,11 @@ class _MainState extends State<Main> {
   void _setReadMode(Search sch, {bool pushToHistory = true}) async {
     final model = ScopedModel.of<TheModel>(context);
     final Iterable<Note> notes =
-      sch.by == SearchMode.all     ? await model.getAllNotes() :
-      sch.by == SearchMode.tag     ? await model.searchByTag(sch.search) :
-      sch.by == SearchMode.keyword ? await model.searchByKeyword(sch.search) :
-      sch.by == SearchMode.id      ? await model.searchById(int.tryParse(sch.search) ?? 0).then((note) => [if (note != null) note]) :
-      sch.by == SearchMode.random  ? await model.getRandomNotes(10) : [];
+      sch.by == .all     ? await model.getAllNotes() :
+      sch.by == .tag     ? await model.searchByTag(sch.search) :
+      sch.by == .keyword ? await model.searchByKeyword(sch.search) :
+      sch.by == .id      ? await model.searchById(int.tryParse(sch.search) ?? 0).then((note) => [if (note != null) note]) :
+      sch.by == .random  ? await model.getRandomNotes(10) : [];
 
     setState(() {
       _currentText.text = "";
@@ -777,7 +776,7 @@ class _MainState extends State<Main> {
       _currentNoteId = null;
       _oldTags = "";
       _notes = notes;
-      _editorMode = EditorMode.read;
+      _editorMode = .read;
       _search = sch;
     });
 

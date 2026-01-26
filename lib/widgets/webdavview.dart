@@ -51,7 +51,7 @@ class _WebDavViewState extends State<WebDavView> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(8),
+        padding: const .all(8),
         child: Column(
           spacing: 10,
           children: [
@@ -74,7 +74,7 @@ class _WebDavViewState extends State<WebDavView> {
             Container(height: 1, color: Colors.grey),
             Visibility(
               visible: _client != null,
-              child: Text(_pwd, style: TextStyle(color: Colors.grey[600], fontSize: 20, fontWeight: FontWeight.bold))
+              child: Text(_pwd, style: TextStyle(color: Colors.grey[600], fontSize: 20, fontWeight: .bold))
             ),
             FutureBuilder(
               future: _futureFiles, // use the stored variable, not the function call
@@ -105,7 +105,7 @@ class _WebDavViewState extends State<WebDavView> {
             leading: Icon(Icons.reply_outlined,
               color: Colors.blueAccent
             ),
-            title: Text("..", style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text("..", style: TextStyle(fontWeight: .bold)),
             onTap: () {
               setState(() {
                 _pwd = dirname(_pwd);
@@ -134,7 +134,7 @@ class _WebDavViewState extends State<WebDavView> {
             color: isDir ? Colors.brown : isDb
               ? Colors.green
               : Colors.grey),
-            title: Text("${isDir ? "/" : ""}$name", style: TextStyle(fontWeight: isDir ? FontWeight.bold : FontWeight.normal)),
+            title: Text("${isDir ? "/" : ""}$name", style: TextStyle(fontWeight: isDir ? .bold : .normal)),
             subtitle: Text(file.mTime.toString().substring(0, 19)), // remove ".000" (milliseconds)
             onTap: () async {
               if (isDir) {
@@ -168,7 +168,7 @@ class _WebDavViewState extends State<WebDavView> {
         Settings.local.setWebdavConnection(uri, login, pass);
       });
     } catch (e) {
-      Utils.showAlert("Cannot connect", e.toString(), IconStyle.error, AlertButtonStyle.ok);
+      Utils.showAlert("Cannot connect", e.toString(), .error, .ok);
     }
   }
 

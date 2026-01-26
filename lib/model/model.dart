@@ -41,11 +41,11 @@ final class TheModel extends Model {
             // note that messages differ on iOS/MacOS and Windows
             if (e.toString().contains("file is not a database") || e.toString().startsWith("DatabaseException(open_failed")) {
               const msg = "Cannot open encrypted DB file. Wrong password?";
-              Utils.showAlert("Error", msg, IconStyle.error, AlertButtonStyle.ok);
+              Utils.showAlert("Error", msg, .error, .ok);
             } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
               // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, rm recursion
               openFile(context, path, removeMe: password);
-            } else Utils.showAlert("Error", e.toString(), IconStyle.error, AlertButtonStyle.ok);
+            } else Utils.showAlert("Error", e.toString(), .error, .ok);
             return;
           }
           break;
@@ -57,7 +57,7 @@ final class TheModel extends Model {
       notifyListeners();
       Settings.local.addToRecentFiles(path);
     } else {
-      Utils.showAlert("Error", "File not found:\n$path", IconStyle.error, AlertButtonStyle.ok);
+      Utils.showAlert("Error", "File not found:\n$path", .error, .ok);
       Settings.local.removeFromRecentFiles(path);
     }
   }
@@ -98,7 +98,7 @@ final class TheModel extends Model {
           break;
         case ".dbx":                             // encrypted
           const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
-          await Utils.showAlert("DB encryption", msg, IconStyle.exclamation, AlertButtonStyle.ok);
+          await Utils.showAlert("DB encryption", msg, .exclamation, .ok);
           final password = await showInputBox(context, "Enter password", hint: "Password");
           if (password == null) return;
           print("Creating encrypted DB file $path");
@@ -141,7 +141,7 @@ final class TheModel extends Model {
 
   Future<bool> archiveNoteById(int noteId) {
     const text = "Are you sure you want to archive this note?";
-    return Utils.showAlert("Archive note", text, IconStyle.question, AlertButtonStyle.yesNo, onYes: () async {
+    return Utils.showAlert("Archive note", text, .question, .yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
     });
   }
@@ -152,7 +152,7 @@ final class TheModel extends Model {
 
   Future<bool> deleteNoteById(int noteId) {
     const text = "Are you sure you want to delete this note? It cannot be undone";
-    return Utils.showAlert("Delete note", text, IconStyle.stop, AlertButtonStyle.yesNo, onYes: () async {
+    return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async {
       await _db.deleteNote(noteId);
     });
   }
@@ -163,7 +163,7 @@ final class TheModel extends Model {
     if (!_db.isConnected()) return null;
     if (data.trim().isEmpty) return null;
     if (tags.isEmpty) {
-      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", IconStyle.asterisk, AlertButtonStyle.ok);
+      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", .asterisk, .ok);
       return null;
     }
 
@@ -171,13 +171,13 @@ final class TheModel extends Model {
       // UPDATE
       await _db.updateNote(noteId, data);
       await _updateTags(noteId, newTags, oldTags);
-      Utils.showAlert("Done", "Note updated", IconStyle.information, AlertButtonStyle.ok);
+      Utils.showAlert("Done", "Note updated", .information, .ok);
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data);
       await _db.linkTagsToNote(newNoteId, tags);
-      Utils.showAlert("Done", "Note added", IconStyle.information, AlertButtonStyle.ok);
+      Utils.showAlert("Done", "Note added", .information, .ok);
       return newNoteId;
     }
   }
@@ -196,6 +196,6 @@ final class TheModel extends Model {
 
   void _showExtensionError(String ext) {
     final msg = "File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)";
-    Utils.showAlert("Error", msg, IconStyle.error, AlertButtonStyle.ok);
+    Utils.showAlert("Error", msg, .error, .ok);
   }
 }

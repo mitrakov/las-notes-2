@@ -23,15 +23,15 @@ class Utils {
     );
 
     switch (result) {
-      case AlertButton.yesButton:
-      case AlertButton.okButton:
-      case AlertButton.tryAgainButton:
-      case AlertButton.retryButton:
+      case .yesButton:
+      case .okButton:
+      case .tryAgainButton:
+      case .retryButton:
         onYes?.call();
         return true;
-      case AlertButton.noButton:
-      case AlertButton.abortButton:
-      case AlertButton.continueButton:
+      case .noButton:
+      case .abortButton:
+      case .continueButton:
       default:
         onNo?.call();
         return false;
@@ -44,6 +44,6 @@ class Utils {
     final start = text.substring(0, pos);
     final end = text.substring(pos);
     ctrl.text = "$start$value$end";
-    ctrl.selection = TextSelection.collapsed(offset: pos + value.length);
+    ctrl.selection = .collapsed(offset: pos + value.length);
   }
 }

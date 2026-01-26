@@ -26,15 +26,15 @@ class _CollapsibleState extends State<Collapsible> {
     final tags = Row(mainAxisSize: .min, spacing: 10, children: Utils.split(widget.note.tags).map((tag) =>
         Container(
           decoration: BoxDecoration(
-            color: Color.fromARGB(155, 216, 230, 245),
-            border: Border.all(color: Colors.blueAccent, width: 0.5,),
-            borderRadius: BorderRadius.circular(8),
+            color: .fromARGB(155, 216, 230, 245),
+            border: .all(color: Colors.blueAccent, width: 0.5,),
+            borderRadius: .circular(8),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 7),
+          padding: const .symmetric(horizontal: 7),
           child: Text(tag, style: TextStyle(color: Colors.blueAccent, fontSize: 12)),
         )
     ).toList());
-    return Stack(alignment: AlignmentGeometry.topRight, children: [md, tags]);
+    return Stack(alignment: .topRight, children: [md, tags]);
   }
 
   Widget _markdownWidget(String data, {bool selectable = true}) {
