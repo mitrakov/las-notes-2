@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 import 'package:path/path.dart' show basename;
+import 'package:markdown_widget/markdown_widget.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
@@ -457,7 +458,7 @@ class _MainState extends State<Main> {
                                 },
                                 controlAffinity: ListTileControlAffinity.leading,
                               ),
-                              const Text("TAGS", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              const Text("TAGS", textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                               ...tags,
                             ]);
                         } else return const CircularProgressIndicator();
@@ -465,7 +466,7 @@ class _MainState extends State<Main> {
                     ),
                   ),
                   Flexible( // main window
-                    flex: 6,
+                    flex: 5,
                     child: Column(children: [ // [top: edit/render panels, bottom: edit-tags/buttons panels]
                       Expanded(child: _editorMode == EditorMode.edit
                         ? Row(children: [ // [left: edit panel, right: render panel]
@@ -481,7 +482,7 @@ class _MainState extends State<Main> {
                                 decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
                               ),
                             )),
-                            Expanded(child: TrixContainer(child: Collapsible(_currentText.text, expanded: true))),
+                            Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
                           ])
                         : FutureBuilder(
                             future: _makeMainAreaDesktop(),
@@ -536,10 +537,7 @@ class _MainState extends State<Main> {
         return ListView(children: _notes.map((note) => TrixContainer(child: GestureDetector(
           onLongPress: () => _contextMenuMobile(note), // doesn't work on iOS (=> also use DoubleTap)
           onDoubleTap: () => _contextMenuMobile(note),
-          child: Opacity(
-            opacity: note.isDeleted ? 0.67 : 1,
-            child: Collapsible(note.data, linesToCollapse: 32),
-          )))).toList()
+          child: Opacity(opacity: note.isDeleted ? 0.67 : 1, child: Collapsible(note))))).toList()
         );
       case EditorMode.edit:
         return Column(children: [
@@ -553,7 +551,7 @@ class _MainState extends State<Main> {
             enableSuggestions: false, // Android only
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(6))),
           )),
-          Expanded(child: TrixContainer(child: Collapsible(_currentText.text, expanded: true))),
+          Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
           Row(children: [
             const Text("Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
             Expanded(child: Padding(
@@ -654,10 +652,7 @@ class _MainState extends State<Main> {
           default:
         }
       },
-      child: TrixContainer(child: Opacity(
-        opacity: note.isDeleted ? 0.67 : 1,
-        child: Collapsible(note.data, linesToCollapse: 32),
-      )),
+      child: TrixContainer(child: Opacity(opacity: note.isDeleted ? 0.67 : 1, child: Collapsible(note))),
     )).toList();
     return ListView(children: children);
   }

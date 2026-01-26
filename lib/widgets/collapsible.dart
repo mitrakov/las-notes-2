@@ -1,30 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lasnotes/utils.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:lasnotes/model/note.dart';
+import 'package:lasnotes/utils.dart';
 
 class Collapsible extends StatefulWidget {
-  final String data;
-  final int linesToCollapse;
-  final bool expanded;
-
-  const Collapsible(this.data, {this.expanded = false, this.linesToCollapse = 32});
-
+  final Note note;
+  const Collapsible(this.note);
   @override
   State<Collapsible> createState() => _CollapsibleState();
 }
 
 class _CollapsibleState extends State<Collapsible> {
-  late bool _isExpanded = widget.expanded;
+  static const linesToCollapse = 32;
+  var _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final text = widget.data;
-    return _isExpanded || Utils.linesCount(text) < widget.linesToCollapse ? _markdownWidget(text) : ExpansionTile(
+    final text = widget.note.data;
+    final md = _isExpanded || Utils.linesCount(text) < linesToCollapse ? _markdownWidget(text) : ExpansionTile(
       title: _markdownWidget(Utils.firstLines(text, 4).join("\n") + "\n...", selectable: false),
       children: [_markdownWidget(text)],
       onExpansionChanged: (bool expanded) { setState(() {_isExpanded = expanded;}); },
     );
+    final tags = Row(mainAxisSize: .min, spacing: 10, children: Utils.split(widget.note.tags).map((tag) =>
+        Container(
+          decoration: BoxDecoration(
+            color: Color.fromARGB(155, 216, 230, 245),
+            border: Border.all(color: Colors.blueAccent, width: 0.5,),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 7),
+          child: Text(tag, style: TextStyle(color: Colors.blueAccent, fontSize: 12)),
+        )
+    ).toList());
+    return Stack(alignment: AlignmentGeometry.topRight, children: [md, tags]);
   }
 
   Widget _markdownWidget(String data, {bool selectable = true}) {
