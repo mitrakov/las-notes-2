@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:ffi' show DynamicLibrary;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:path/path.dart' show basename;
 import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
@@ -14,6 +13,7 @@ import 'package:sqlite3/open.dart' show open;
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
+import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 import 'package:lasnotes/widgets/trixiconbutton.dart';
 import 'package:lasnotes/widgets/webdavview.dart';
@@ -587,31 +587,19 @@ class _MainState extends State<Main> {
     }
 
     // regular notes
-    final result = await showModalActionSheet(
-        context: context,
-        title: "Update note",
-        message: Utils.firstLine(note.data),
-        actions: [
-          SheetAction(key: 1, label: "Edit", icon: Icons.edit_outlined, isDefaultAction: true),
-          SheetAction(key: 2, label: "Archive", icon: Icons.archive_outlined),
-          SheetAction(key: 3, label: "Delete", icon: Icons.delete_forever, isDestructiveAction: true),
-        ]);
-    switch (result) {
-      case 1:
-        _setEditMode(note.id, note.data, note.tags);
-        break;
-      case 2:
+    showContextMenuBox(context, "Update note", Utils.firstLine(note.data), [
+      TrixAction("Edit", true, false, () => _setEditMode(note.id, note.data, note.tags)),
+      TrixAction("Archive", false, false, () async {
         if (await model.archiveNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
-        break;
-      case 3:
+      }),
+      TrixAction("Delete", false, true, () async {
         if (await model.deleteNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
-        break;
-      default:
-    }
+      }),
+    ]);
   }
 
   Future<Widget> _makeMainAreaDesktop() async {
