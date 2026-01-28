@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:path/path.dart' show basename;
-import 'package:markdown_widget/markdown_widget.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
@@ -482,7 +481,7 @@ class _MainState extends State<Main> {
                                 decoration: InputDecoration(border: OutlineInputBorder(borderRadius: .circular(6))),
                               ),
                             )),
-                            Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
+                            Expanded(child: TrixContainer(child: Collapsible.simple(_currentText.text))),
                           ])
                         : FutureBuilder(
                             future: _makeMainAreaDesktop(),
@@ -551,7 +550,7 @@ class _MainState extends State<Main> {
             enableSuggestions: false, // Android only
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: .circular(6))),
           )),
-          Expanded(child: TrixContainer(child: MarkdownWidget(data: _currentText.text))),
+          Expanded(child: TrixContainer(child: Collapsible.simple(_currentText.text))),
           Row(children: [
             const Text("Tags:", style: TextStyle(fontWeight: .bold)),
             Expanded(child: Padding(

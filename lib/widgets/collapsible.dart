@@ -4,11 +4,36 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/utils.dart';
 
+const monospace = TextStyle(
+  fontFamily: 'Menlo',   // MacOS/iOS
+  fontFamilyFallback: [
+    'Consolas',          // Windows
+    'Ubuntu Mono',       // Ubuntu/Debian
+    'Liberation Mono',   // RedHat/Fedora/CentOS
+    'DejaVu Sans Mono',  // Debian/Arch/Suse
+    'Courier New',       // The "Global" backup
+    'monospace',         // The "Emergency" system generic
+  ],
+);
+
 class Collapsible extends StatefulWidget {
   final Note note;
   const Collapsible(this.note);
   @override
   State<Collapsible> createState() => _CollapsibleState();
+
+  static Widget simple(String data) {
+    return MarkdownWidget(data: data, selectable: false,
+      config: MarkdownConfig(configs: [
+        PreConfig(
+          textStyle: monospace,
+          wrapper: (child, code, language) {
+            return DefaultTextStyle.merge(style: monospace, child: child); // propagate "monospace" to all children in Highlight
+          },
+        ),
+      ]),
+    );
+  }
 }
 
 class _CollapsibleState extends State<Collapsible> {
@@ -38,17 +63,6 @@ class _CollapsibleState extends State<Collapsible> {
   }
 
   Widget _markdownWidget(String data, {bool selectable = true}) {
-    const monospace = const TextStyle(
-      fontFamily: 'Menlo',   // MacOS/iOS
-      fontFamilyFallback: [
-        'Consolas',          // Windows
-        'Ubuntu Mono',       // Ubuntu/Debian
-        'Liberation Mono',   // RedHat/Fedora/CentOS
-        'DejaVu Sans Mono',  // Debian/Arch/Suse
-        'Courier New',       // The "Global" backup
-        'monospace',         // The "Emergency" system generic
-      ],
-    );
     return MarkdownWidget(
       data: data,
       shrinkWrap: true,
