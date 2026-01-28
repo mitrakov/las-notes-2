@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:ffi' show DynamicLibrary;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_platform_alert/flutter_platform_alert.dart';
+import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:path/path.dart' show basename;
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:share_plus/share_plus.dart';
@@ -588,28 +588,25 @@ class _MainState extends State<Main> {
     }
 
     // regular notes
-    final result = await FlutterPlatformAlert.showCustomAlert(
-      windowTitle: "Update note",
-      text: Utils.firstLine(note.data),
-      iconStyle: .question,
-      positiveButtonTitle: "Edit",
-      neutralButtonTitle: "Archive",
-      negativeButtonTitle: "Delete",
-      options: PlatformAlertOptions(
-        ios: IosAlertOptions(negativeButtonStyle: .destructive),
-        // TODO Android?
-      ),
-    );
+    final result = await showModalActionSheet(
+        context: context,
+        title: "Update note",
+        message: Utils.firstLine(note.data),
+        actions: [
+          SheetAction(key: 1, label: "Edit", icon: Icons.edit_outlined, isDefaultAction: true),
+          SheetAction(key: 2, label: "Archive", icon: Icons.archive_outlined),
+          SheetAction(key: 3, label: "Delete", icon: Icons.delete_forever, isDestructiveAction: true),
+        ]);
     switch (result) {
-      case CustomButton.positiveButton:
+      case 1:
         _setEditMode(note.id, note.data, note.tags);
         break;
-      case CustomButton.neutralButton:
+      case 2:
         if (await model.archiveNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
         break;
-      case CustomButton.negativeButton:
+      case 3:
         if (await model.deleteNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:lasnotes/model/db.dart';

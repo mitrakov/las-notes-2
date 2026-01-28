@@ -15,6 +15,7 @@ dependencies:
   file_picker: 8.1.7               # open-file dialog (bug FIXED! see https://github.com/miguelpruivo/flutter_file_picker/issues/1934)
   scoped_model: 2.0.0              # app state management
   flutter_platform_alert: 0.8.0    # native dialogs
+  adaptive_dialog: 2.6.0           # extra native dialogs
   native_context_menu: 0.2.2+5     # native context menu (desktop only)
   window_manager: 0.5.1            # set window title in runtime (desktop only)
   shared_preferences: 2.5.4        # local key-value storage for settings

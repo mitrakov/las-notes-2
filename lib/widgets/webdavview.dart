@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 import 'package:markdown_widget/config/all.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
