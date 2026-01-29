@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:menubar/menubar.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
 import 'package:sqlite3/open.dart' show open;
@@ -140,6 +141,8 @@ class _MainState extends State<Main> {
   void initState() {
     super.initState();
     _currentText.addListener(() { setState(() {}); });
+    if (Platform.isWindows || Platform.isLinux)
+      _createNativeMenu();
   }
 
   @override
@@ -301,12 +304,11 @@ class _MainState extends State<Main> {
   }
 
   Widget _buildForDesktop(BuildContext context, TheModel model) {
-    final settings = Settings.local;
     final isMacOS = Platform.isMacOS;
     return PlatformMenuBar(
       // This menu is only for MacOS. Use only "onSelectedIntent" (do NOT use "onSelected") in order to get working on Windows/Linux
       // Shortcuts are specified only to draw leading "⌘N" on MacOS menu items (all logic is done through intents)
-      menus: [ // TODO: create menu for Windows/Linux
+      menus: [
         // TODO: switch to onSelectedIntent everywhere
         PlatformMenu(
           label: "",
@@ -320,7 +322,7 @@ class _MainState extends State<Main> {
         PlatformMenu(
           label: "File",
           menus: [
-            PlatformMenu(label: "Open Recent", menus: settings.recentFiles.map((path) =>
+            PlatformMenu(label: "Open Recent", menus: Settings.local.recentFiles.map((path) =>
               PlatformMenuItem(label: path, onSelected: () => model.openFile(context, path))
             ).toList()),
             PlatformMenuItemGroup(members: [
@@ -730,6 +732,38 @@ class _MainState extends State<Main> {
         _history(stack1, stack2); // skip top element in history
       else _setReadMode(search, pushToHistory: false);
     }
+  }
+
+  void _createNativeMenu() {
+    // This is a temp solution until Flutter adds "PlatformMenuBar" support for Windows/Linux.
+    final model = ScopedModel.of<TheModel>(context);
+    setApplicationMenu([
+      NativeSubmenu(label: "File", children: [
+        NativeSubmenu(label: "Open Recent", children: Settings.local.recentFiles.map((path) =>
+            NativeMenuItem(label: path, onSelected: () => model.openFile(context, path))
+        ).toList()),
+        NativeMenuItem(label: "New DB File",    onSelected: () => model.newFile(context)),
+        NativeMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
+        NativeMenuItem(label: "Open...",        onSelected: () => model.openFileWithDialog(context)),
+        NativeMenuItem(label: "Open WebDAV...", onSelected: () => _showWebDavDialogDesktop()),
+        const NativeMenuDivider(),
+        NativeMenuItem(label: "Close DB File",  onSelected: model.closeFile),
+        const NativeMenuDivider(),
+        NativeMenuItem(label: "Quit",           onSelected: () => exit(0)),
+      ]),
+      NativeSubmenu(label: "Edit", children: [
+        NativeMenuItem(label: "᎒᎒᎒ Insert Table",    onSelected: () => Utils.insertText(_currentText, _tableStr)),
+        NativeMenuItem(label: "🔗 Insert Link",     onSelected: () => Utils.insertText(_currentText, _linkStr)),
+        NativeMenuItem(label: "🕓 Insert DateTime", onSelected: () => Utils.insertText(_currentText, _nowStr)),
+      ]),
+      NativeSubmenu(label: "Navigate", children: [
+        NativeMenuItem(label: "⬅️ Back",    onSelected: () => _history(_back, _forward)),
+        NativeMenuItem(label: "➡️ Forward", onSelected: () => _history(_forward, _back)),
+      ]),
+      NativeSubmenu(label: "Help", children: [
+        NativeMenuItem(label: "About Las Notes", shortcut: LogicalKeySet(LogicalKeyboardKey.f2), onSelected: _showAboutDialog),
+      ])
+    ]);
   }
 
   void _setEditMode(int? noteId, String text, String tags) {
