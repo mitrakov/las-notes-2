@@ -1,8 +1,8 @@
 #define MyAppName "Las Notes"
-#define MyAppVersion "2.4.8"
+#define MyAppVersion "2.4.9"
 #define MyAppPublisher "Artem Mitrakov"
 #define MyAppURL "https://github.com/mitrakov/las-notes-2"
-#define MyAppExeName "las_notes.exe"
+#define MyAppExeName "LasNotes.exe"
 #define MyAppAssocName MyAppName + " DB File"
 #define MyAppAssocExt ".db"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt

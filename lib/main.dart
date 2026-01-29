@@ -47,8 +47,8 @@ Build for Windows:
   flutter build windows
   copy files from "build\windows\x64\runner\Release" to "installer\windows\Las Notes"
   insert RuToken and run (PIN 12345678):
-    signtool sign /v /a /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td SHA256 /fd SHA256 'las_notes.exe' '*.dll'
-    signtool verify /v 'las_notes.exe'
+    signtool sign /v /a /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td SHA256 /fd SHA256 'LasNotes.exe' '*.dll'
+    signtool verify /v 'LasNotes.exe'
   add there "sqlite3.dll" from "sqlcipher\windows" folder
   add there "vcruntime140_1.dll" from "installer\windows" folder
   Compile "installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
