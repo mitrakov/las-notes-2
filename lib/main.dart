@@ -685,7 +685,9 @@ class _MainState extends State<Main> {
   void _showAboutDialog() async {
     final i = await PackageInfo.fromPlatform();
     final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2026\nmitrakov-artem@yandex.ru\nAll rights reserved.";
-    Utils.showAlert(i.appName, text, .information, .ok);
+    if (Platform.isWindows) // bug in Windows: F1.keyUp event is swallowed by ModalDialog event loop => let's wait for 300 msec.
+      Future.delayed(Duration(milliseconds: 300), () => Utils.showAlert(i.appName, text, .information, .ok));
+    else Utils.showAlert(i.appName, text, .information, .ok);
   }
 
   void _showWebDavDialogDesktop() {
@@ -736,32 +738,33 @@ class _MainState extends State<Main> {
 
   void _createNativeMenu() {
     // This is a temp solution until Flutter adds "PlatformMenuBar" support for Windows/Linux.
+    // shortcuts don't work here, use std "Intent" approach.
     final model = ScopedModel.of<TheModel>(context);
     setApplicationMenu([
       NativeSubmenu(label: "File", children: [
         NativeSubmenu(label: "Open Recent", children: Settings.local.recentFiles.map((path) =>
             NativeMenuItem(label: path, onSelected: () => model.openFile(context, path))
         ).toList()),
-        NativeMenuItem(label: "New DB File",    onSelected: () => model.newFile(context)),
+        NativeMenuItem(label: "New DB File                    Ctrl+Shift+N", onSelected: () => model.newFile(context)),
         NativeMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
-        NativeMenuItem(label: "Open...",        onSelected: () => model.openFileWithDialog(context)),
-        NativeMenuItem(label: "Open WebDAV...", onSelected: () => _showWebDavDialogDesktop()),
+        NativeMenuItem(label: "Open...                             Ctrl+O",  onSelected: () => model.openFileWithDialog(context)),
+        NativeMenuItem(label: "Open WebDAV...             Ctrl+Shift+O",     onSelected: () => _showWebDavDialogDesktop()),
         const NativeMenuDivider(),
-        NativeMenuItem(label: "Close DB File",  onSelected: model.closeFile),
+        NativeMenuItem(label: "Close DB File                  Ctrl+W",       onSelected: model.closeFile),
         const NativeMenuDivider(),
-        NativeMenuItem(label: "Quit",           onSelected: () => exit(0)),
+        NativeMenuItem(label: "Quit                                 Alt+F4", onSelected: () => exit(0)),
       ]),
       NativeSubmenu(label: "Edit", children: [
-        NativeMenuItem(label: "᎒᎒᎒ Insert Table",    onSelected: () => Utils.insertText(_currentText, _tableStr)),
-        NativeMenuItem(label: "🔗 Insert Link",     onSelected: () => Utils.insertText(_currentText, _linkStr)),
-        NativeMenuItem(label: "🕓 Insert DateTime", onSelected: () => Utils.insertText(_currentText, _nowStr)),
+        NativeMenuItem(label: " ᎒᎒᎒  Insert Table          Ctrl+Shift+T",   onSelected: () => Utils.insertText(_currentText, _tableStr)),
+        NativeMenuItem(label: "🔗 Insert Link             Ctrl+Shift+L",      onSelected: () => Utils.insertText(_currentText, _linkStr)),
+        NativeMenuItem(label: "🕓 Insert DateTime   Ctrl+Shift+D",           onSelected: () => Utils.insertText(_currentText, _nowStr)),
       ]),
       NativeSubmenu(label: "Navigate", children: [
-        NativeMenuItem(label: "⬅️ Back",    onSelected: () => _history(_back, _forward)),
-        NativeMenuItem(label: "➡️ Forward", onSelected: () => _history(_forward, _back)),
+        NativeMenuItem(label: "⇐ Back          Ctrl+[", onSelected: () => _history(_back, _forward)),
+        NativeMenuItem(label: "⇒ Forward    Ctrl+]",       onSelected: () => _history(_forward, _back)),
       ]),
       NativeSubmenu(label: "Help", children: [
-        NativeMenuItem(label: "About Las Notes", shortcut: LogicalKeySet(LogicalKeyboardKey.f2), onSelected: _showAboutDialog),
+        NativeMenuItem(label: "About Las Notes    F1", onSelected: _showAboutDialog),
       ])
     ]);
   }

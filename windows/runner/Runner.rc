@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.mitrakoff.self" "\0"
-            VALUE "FileDescription", "las_notes" "\0"
+            VALUE "FileDescription", "Las Notes" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "las_notes" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.mitrakoff.self. All rights reserved." "\0"
-            VALUE "OriginalFilename", "las_notes.exe" "\0"
-            VALUE "ProductName", "las_notes" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024-2026 mitrakov-artem@yandex.ru. All rights reserved." "\0"
+            VALUE "OriginalFilename", "LasNotes.exe" "\0"
+            VALUE "ProductName", "Las Notes" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
