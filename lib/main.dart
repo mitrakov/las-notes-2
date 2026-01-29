@@ -23,7 +23,8 @@ import 'package:lasnotes/widgets/collapsible.dart';
 import 'package:lasnotes/utils.dart';
 import 'package:lasnotes/trixstack.dart';
 
-bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+bool get isWinLinux => Platform.isWindows || Platform.isLinux;
+bool get isDesktop  => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
 /*
 Build for MacOS:
@@ -74,7 +75,7 @@ void main() async {
   // 1. https://stackoverflow.com/q/76158800         // enable FFI support for Windows/Linux
   // 2. pub dev: sqlite3_flutter_libs                // (deprecated) add DLLs for Windows/Linux
   // 3. https://github.com/simolus3/sqlite3.dart/blob/e66702c5bec7faec2bf71d374c008d5273ef2b3b/sqlite3/lib/src/load_library.dart
-  if (Platform.isWindows || Platform.isLinux) {
+  if (isWinLinux) {
     final libName = Platform.isWindows ? "sqlite3.dll" : "libsqlite3.so";
     sqf.sqfliteFfiInit();
     sqf.databaseFactory = sqf.createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open(libName)));
@@ -142,8 +143,8 @@ class _MainState extends State<Main> {
   void initState() {
     super.initState();
     _currentText.addListener(() { setState(() {}); });
-    if (Platform.isWindows || Platform.isLinux)
-      _createNativeMenu();
+    if (isWinLinux)
+      _createMenuWindowsLinux();
   }
 
   @override
@@ -307,32 +308,60 @@ class _MainState extends State<Main> {
   Widget _buildForDesktop(BuildContext context, TheModel model) {
     final isMacOS = Platform.isMacOS;
     return PlatformMenuBar(
-      // This menu is only for MacOS. Use only "onSelectedIntent" (do NOT use "onSelected") in order to get working on Windows/Linux
-      // Shortcuts are specified only to draw leading "⌘N" on MacOS menu items (all logic is done through intents)
+      // This menu is only for MacOS. For Windows/Linux see: _createMenuWindowsLinux().
+      // Use only "onSelectedIntent" (do NOT use "onSelected") in order to make the logic uniform across MacOS/Linux/Windows.
+      // Shortcuts are specified here only to draw a hint (e.g. "⌘N") on MacOS menu items (all logic is done through intents).
       menus: [
-        // TODO: switch to onSelectedIntent everywhere
         PlatformMenu(
           label: "",
           menus: [
             PlatformMenuItemGroup(members: [
-              PlatformMenuItem(label: "About Las Notes", onSelected: _showAboutDialog),
+              PlatformMenuItem(
+                label: "About Las Notes",
+                onSelectedIntent: AboutIntent(),
+                shortcut: SingleActivator(LogicalKeyboardKey.f1),
+              ),
             ]),
-            PlatformMenuItem(label: "Quit", onSelected: () => exit(0)),
+            PlatformMenuItem(
+              label: "Quit",
+              onSelectedIntent: CloseAppIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyQ, meta: true),
+            ),
           ],
         ),
         PlatformMenu(
           label: "File",
           menus: [
             PlatformMenu(label: "Open Recent", menus: Settings.local.recentFiles.map((path) =>
-              PlatformMenuItem(label: path, onSelected: () => model.openFile(context, path))
+              PlatformMenuItem(label: path, onSelected: () => model.openFile(context, path)) // no intents/shortcuts here
             ).toList()),
             PlatformMenuItemGroup(members: [
-              PlatformMenuItem(label: "New DB File", onSelected: () => model.newFile(context)),
-              PlatformMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
-              PlatformMenuItem(label: "Open...", onSelected: () => model.openFileWithDialog(context)),
-              PlatformMenuItem(label: "Open WebDAV...", onSelected: () => _showWebDavDialogDesktop()),
+              PlatformMenuItem(
+                label: "New DB File",
+                onSelectedIntent: NewDbFileIntent(),
+                shortcut: SingleActivator(LogicalKeyboardKey.keyN, meta: true, shift: true),
+              ),
+              PlatformMenuItem(
+                label: "New DB File (encrypted)",
+                onSelectedIntent: NewDbxFileIntent(),
+                shortcut: SingleActivator(LogicalKeyboardKey.keyE, meta: true, shift: true),
+              ),
+              PlatformMenuItem(
+                label: "Open...",
+                onSelectedIntent: OpenDbFileIntent(),
+                shortcut: SingleActivator(LogicalKeyboardKey.keyO, meta: true),
+              ),
+              PlatformMenuItem(
+                label: "Open WebDAV...",
+                onSelectedIntent: OpenWebDavFileIntent(),
+                shortcut: SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true),
+              ),
             ]),
-            PlatformMenuItem(label: "Close DB File", onSelected: model.closeFile),
+            PlatformMenuItem(
+              label: "Close DB File",
+              onSelectedIntent: CloseDbFileIntent(),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyW, meta: true),
+            ),
           ],
         ),
         PlatformMenu(
@@ -748,7 +777,7 @@ class _MainState extends State<Main> {
     final i = await PackageInfo.fromPlatform();
     final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2026\nmitrakov-artem@yandex.ru\nAll rights reserved.";
     if (Platform.isWindows) // bug in Windows: F1.keyUp event is swallowed by ModalDialog event loop => let's wait for 300 msec.
-      Future.delayed(Duration(milliseconds: 300), () => Utils.showAlert(i.appName, text, .information, .ok));
+      Future.delayed(Duration(milliseconds: 300), () => Utils.showAlert(i.appName, text, .information, .ok)); // TODO chekc Linux?
     else Utils.showAlert(i.appName, text, .information, .ok);
   }
 
@@ -798,7 +827,7 @@ class _MainState extends State<Main> {
     }
   }
 
-  void _createNativeMenu() {
+  void _createMenuWindowsLinux() {
     // This is a temp solution until Flutter adds "PlatformMenuBar" support for Windows/Linux.
     // shortcuts don't work here, use std "Intent" approach.
     final model = ScopedModel.of<TheModel>(context);
