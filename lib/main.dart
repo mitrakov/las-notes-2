@@ -2,13 +2,14 @@ import 'dart:io';
 import 'dart:ffi' show DynamicLibrary;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path/path.dart' show basename;
+import 'package:path/path.dart' show basename, extension;
 import 'package:share_plus/share_plus.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:menubar/menubar.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
 import 'package:sqlite3/open.dart' show open;
 import 'package:lasnotes/model/note.dart';
@@ -173,7 +174,7 @@ class _MainState extends State<Main> {
         ],
       ),
       body: model.currentPath == null
-        ? const Center(child: Text("Welcome!\nOpen a DB file"))
+        ? Center(child: Text("Welcome to Las Notes", textAlign: .center, style: TextStyle(fontWeight: .bold, fontSize: 36)))
         : Padding(padding: const .all(8.0), child: _makeMainAreaMobile(model)),
       drawer: Drawer(
         child: Padding(
@@ -207,7 +208,7 @@ class _MainState extends State<Main> {
                   OutlinedButton(
                     style: ButtonStyle(
                       alignment: .centerLeft,
-                      backgroundColor: WidgetStateProperty.all(Colors.brown[50])
+                      backgroundColor: .all(Colors.brown[50])
                     ),
                     child: Text(tag),
                     onPressed: () {
@@ -371,7 +372,7 @@ class _MainState extends State<Main> {
         ),
       ],
       child: Shortcuts(
-        shortcuts: { // TODO move to PlatformMenuItem and check on Windows/Linux
+        shortcuts: {
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS, shift: true): NewDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyE, meta: isMacOS, control: !isMacOS, shift: true): NewDbxFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS, shift: true): OpenWebDavFileIntent(),
@@ -412,7 +413,7 @@ class _MainState extends State<Main> {
             autofocus: true,          // focused by default
             focusNode: _focusNodeGlobal,
             child: Scaffold(
-              body: model.currentPath == null ? const Center(child: Text("Welcome!\nOpen or create a new DB file")) : Center(
+              body: model.currentPath == null ? _splashScreen() : Center(
                 child: Row(children: [ // [left: tags, right: main window]
                   Expanded( // tags
                     child: FutureBuilder(
@@ -421,12 +422,12 @@ class _MainState extends State<Main> {
                         if (snapshot.hasData) {
                           final tags = snapshot.data!.map((tag) => Padding(
                             padding: const .only(top: 2), // Tag button on the left side
-                            child: Padding( // TODO to method
+                            child: Padding(
                               padding: const .symmetric(vertical: 2),
                               child: OutlinedButton(
                                 style: ButtonStyle(
                                   alignment: .centerLeft,
-                                  backgroundColor: WidgetStateProperty.all(Colors.brown[50])
+                                  backgroundColor: .all(Colors.brown[50])
                                 ),
                                 child: Text(tag),
                                 onPressed: () => _setReadMode(Search(tag, .tag)),
@@ -511,7 +512,7 @@ class _MainState extends State<Main> {
                           ),
                           const SizedBox(width: 10),
                           FilledButton(style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(Colors.blueAccent),
+                            backgroundColor: .all(Colors.blueAccent),
                             minimumSize: const WidgetStatePropertyAll(Size(120, 50))),
                             onPressed: _saveNote,
                             child: Text(_currentNoteId == null ? "Save" : "Update",
@@ -542,7 +543,7 @@ class _MainState extends State<Main> {
         );
       case .edit:
         return Column(children: [
-          Expanded(child: TextField( // TODO reuse
+          Expanded(child: TextField(
             controller: _currentText,
             focusNode: _focusNodeText,
             autofocus: true,
@@ -658,6 +659,67 @@ class _MainState extends State<Main> {
     );
   }
 
+  Widget _splashScreen() {
+    final model = ScopedModel.of<TheModel>(context);
+    return Padding(padding: const .all(32), child: Center(child: TrixContainer(child: SizedBox(width: 600,
+      child: Column(
+        mainAxisSize: .min,
+        children: [
+          const Text("Welcome to Las Notes", textAlign: .center, style: TextStyle(fontWeight: .bold, fontSize: 36)),
+          Padding(
+            padding: .all(20),
+            child: Row(
+              spacing: 10,
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    child: const Text("Open File"),
+                    style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
+                    onPressed: () => model.openFileWithDialog(context),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    child: const Text("WebDAV"),
+                    style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
+                    onPressed: _showWebDavDialogDesktop,
+                  )
+                ),
+                Expanded(
+                  child: FilledButton(
+                    child: const Text("New File"),
+                    style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
+                    onPressed: () => model.newFile(context)
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    child: const Text("New File (encrypted)", textAlign: .center),
+                    style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
+                    onPressed: () => model.newFile(context, encrypted: true)
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              shrinkWrap: true,
+              children: Settings.local.recentFiles.map((path) => TrixContainer(
+                child: ListTile(
+                  leading: FaIcon(FontAwesomeIcons.database, color: extension(path) == ".dbx" ? Colors.orange : Colors.blue, size:32),
+                  title: Text(basename(path), style: TextStyle(fontWeight: .bold)),
+                  subtitle: Text(path, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                  onTap: () => model.openFile(context, path),
+                ),
+              )).toList(),
+            ),
+          ),
+        ],
+      )))),
+    );
+  }
+
   void _saveNote() async {
     if (_currentText.text.trim().isEmpty) return;
 
@@ -743,10 +805,10 @@ class _MainState extends State<Main> {
     setApplicationMenu([
       NativeSubmenu(label: "File", children: [
         NativeSubmenu(label: "Open Recent", children: Settings.local.recentFiles.map((path) =>
-            NativeMenuItem(label: path, onSelected: () => model.openFile(context, path))
+          NativeMenuItem(label: path, onSelected: () => model.openFile(context, path))
         ).toList()),
         NativeMenuItem(label: "New DB File                    Ctrl+Shift+N", onSelected: () => model.newFile(context)),
-        NativeMenuItem(label: "New DB File (encrypted)", onSelected: () => model.newFile(context, encrypted: true)),
+        NativeMenuItem(label: "New DB File (encrypted)",                   onSelected: () => model.newFile(context, encrypted: true)),
         NativeMenuItem(label: "Open...                             Ctrl+O",  onSelected: () => model.openFileWithDialog(context)),
         NativeMenuItem(label: "Open WebDAV...             Ctrl+Shift+O",     onSelected: () => _showWebDavDialogDesktop()),
         const NativeMenuDivider(),
@@ -755,9 +817,9 @@ class _MainState extends State<Main> {
         NativeMenuItem(label: "Quit                                 Alt+F4", onSelected: () => exit(0)),
       ]),
       NativeSubmenu(label: "Edit", children: [
-        NativeMenuItem(label: " ᎒᎒᎒  Insert Table          Ctrl+Shift+T",   onSelected: () => Utils.insertText(_currentText, _tableStr)),
-        NativeMenuItem(label: "🔗 Insert Link             Ctrl+Shift+L",      onSelected: () => Utils.insertText(_currentText, _linkStr)),
-        NativeMenuItem(label: "🕓 Insert DateTime   Ctrl+Shift+D",           onSelected: () => Utils.insertText(_currentText, _nowStr)),
+        NativeMenuItem(label: " ᎒᎒᎒  Insert Table          Ctrl+Shift+T",onSelected: ()=>Utils.insertText(_currentText, _tableStr)),
+        NativeMenuItem(label: "🔗 Insert Link             Ctrl+Shift+L",onSelected: ()=>Utils.insertText(_currentText, _linkStr)),
+        NativeMenuItem(label: "🕓 Insert DateTime   Ctrl+Shift+D",         onSelected: ()=>Utils.insertText(_currentText, _nowStr)),
       ]),
       NativeSubmenu(label: "Navigate", children: [
         NativeMenuItem(label: "⇐ Back          Ctrl+[", onSelected: () => _history(_back, _forward)),

@@ -9,7 +9,7 @@ import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:lasnotes/widgets/webdavview.dart';
 import 'package:lasnotes/utils.dart';
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart' show extension;
 
 final class TheModel extends Model {
   final _db = SQLiteDatabase();
@@ -24,7 +24,7 @@ final class TheModel extends Model {
 
   void openFile(BuildContext context, String path, {String? removeMe}) async {
     if (File(path).existsSync()) {
-      final ext = p.extension(path);
+      final ext = extension(path);
       switch (ext) {
         case ".db":                              // regular
           print("Opening regular DB file $path");
@@ -89,7 +89,7 @@ final class TheModel extends Model {
         file.deleteSync();
       }
 
-      final ext = p.extension(path);
+      final ext = extension(path);
       switch (ext) {
         case ".db":                              // regular
           print("Creating regular DB file $path");

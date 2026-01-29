@@ -4,6 +4,7 @@ import 'package:markdown_widget/config/all.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webdav_client/webdav_client.dart' as wd;
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/utils.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
@@ -127,12 +128,10 @@ class _WebDavViewState extends State<WebDavView> {
           child: TrixContainer(child: ListTile(
             dense: true,
             visualDensity: VisualDensity.compact,
-            leading: Icon(isDir ? Icons.folder : isDb
-              ? Icons.save_outlined
-              : Icons.device_unknown,
-            color: isDir ? Colors.brown : isDb
-              ? Colors.green
-              : Colors.grey),
+            leading: FaIcon(isDir ? FontAwesomeIcons.solidFolder : isDb
+              ? FontAwesomeIcons.database
+              : FontAwesomeIcons.question,
+            color: isDir ? Colors.brown : isDb ? ext == ".db" ? Colors.blue : Colors.orange : Colors.grey),
             title: Text("${isDir ? "/" : ""}$name", style: TextStyle(fontWeight: isDir ? .bold : .normal)),
             subtitle: Text(file.mTime.toString().substring(0, 19)), // remove ".000" (milliseconds)
             onTap: () async {

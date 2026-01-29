@@ -22,6 +22,7 @@ dependencies:
   share_plus: 12.0.1               # share-dialog for iOS share
   url_launcher_linux: 3.2.2        # TMP: override version of markdown_widget, https://github.com/asjqkkkk/markdown_widget/issues/243
   webdav_client: 1.2.2             # webdav client
+  font_awesome_flutter: 10.12.0    # extra icons
   menubar: # native menu bar for Windows/Linux; should be removed once Flutter PlatformMenuBar supports Windows/Linux
     git:
       url: https://github.com/google/flutter-desktop-embedding.git
