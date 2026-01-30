@@ -9,6 +9,7 @@ import 'package:scoped_model/scoped_model.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:menubar/menubar.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
 import 'package:sqlite3/open.dart' show open;
@@ -112,26 +113,31 @@ class _MainState extends State<Main> {
   static const _tableStr = "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n";
   static const _linkStr = "[Link](https://)\n";
 
-  final _focusNodeGlobal = FocusNode();         // main global focus for the whole desktop app (to get shortcuts working)
-  final _focusNodeText = FocusNode();           // main text focus
-  final _focusNodeTags = FocusNode();           // comma-separated tags focus
-  final _focusNodeSearch = FocusNode();         // global search focus
-
+  // === STATE VARS ===                         // !!! update them only in _setEditMode() and _setReadMode()
   final _currentText = TextEditingController(); // main text in add/edit mode
   final _currentTags = TextEditingController(); // comma-separated tags in the text field
-  final _globalSearch = TextEditingController();// text in "Global search" field; only for mobile app
-
   int? _currentNoteId;                          // if present, noteID in edit mode (otherwise NEW_NOTE mode)
+  Attachment? _currentAttachment;
   var _oldTags = "";                            // old comma-separated tags for edit mode (to calc tags diff)
   Iterable<Note> _notes = [];                   // in view mode, DB notes array for markdown view
-  var _search = Search("", .all);               // search by tag name (.tag), keyword (.keyword), ID (.id) or all (.all)
   EditorMode _editorMode = .edit;               // edit or view mode
+  var _search = Search("", .all);               // search by tag name (.tag), keyword (.keyword), ID (.id) or all (.all)
+
+  // Focus nodes
+  final _focusNodeGlobal = FocusNode();         // main global focus for the whole desktop app (to get shortcuts working)
+  final _focusNodeText   = FocusNode();         // main text focus
+  final _focusNodeTags   = FocusNode();         // comma-separated tags focus
+  final _focusNodeSearch = FocusNode();         // global search focus
+
+  // Non-important state variables
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
+  final _globalSearch = TextEditingController();// text in "Global search" field; only for mobile app
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
   Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
   var _back = TrixStack<Search>();              // ⬅️ stack history
   var _forward = TrixStack<Search>();           // ➡️ stack history
 
+  // Simple getters/setters
   String get _nowStr => "${DateTime.now().toString().substring(0, 19)}\n";
   bool get fileChanged => _fileChanged;
   set fileChanged(bool v) {
@@ -236,7 +242,7 @@ class _MainState extends State<Main> {
                 heroTag: "newNote",
                 child: const Icon(Icons.note_add_outlined, size: 32),
                 backgroundColor: Colors.lightGreen[700],
-                onPressed: () => _setEditMode(null, "", ""),
+                onPressed: () => _setEditMode(null, "", "", null),
               ),
             ),
           ),
@@ -381,7 +387,12 @@ class _MainState extends State<Main> {
               label: "🕓 Insert DateTime",
               onSelectedIntent: InsertDateIntent(),
               shortcut: SingleActivator(LogicalKeyboardKey.keyD, meta: true, shift: true),
-            )
+            ),
+            PlatformMenuItem(
+              label: "📎 Insert Attachment",
+              onSelectedIntent: InsertAttachment(),
+              shortcut: SingleActivator(LogicalKeyboardKey.keyA, meta: true, shift: true),
+            ),
           ],
         ),
         PlatformMenu(
@@ -408,6 +419,7 @@ class _MainState extends State<Main> {
           SingleActivator(LogicalKeyboardKey.keyT, meta: isMacOS, control: !isMacOS, shift: true): InsertTableIntent(),
           SingleActivator(LogicalKeyboardKey.keyL, meta: isMacOS, control: !isMacOS, shift: true): InsertLinkIntent(),
           SingleActivator(LogicalKeyboardKey.keyD, meta: isMacOS, control: !isMacOS, shift: true): InsertDateIntent(),
+          SingleActivator(LogicalKeyboardKey.keyA, meta: isMacOS, control: !isMacOS, shift: true): InsertAttachment(),
           SingleActivator(LogicalKeyboardKey.keyF, meta: isMacOS, control: !isMacOS, shift: true): GlobalSearchIntent(),
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS):              OpenDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyW, meta: isMacOS, control: !isMacOS):              CloseDbFileIntent(),
@@ -427,10 +439,11 @@ class _MainState extends State<Main> {
             InsertTableIntent:    CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _tableStr)),
             InsertLinkIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _linkStr)),
             InsertDateIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _nowStr)),
+            InsertAttachment:     CallbackAction(onInvoke: (_) => _insertAttachment()),
             GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
             OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
             CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
-            NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "")),
+            NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "", null)),
             SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
             EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
             AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
@@ -470,7 +483,7 @@ class _MainState extends State<Main> {
                                 TrixIconTextButton.icon(
                                   icon: const Icon(Icons.add_box_rounded),
                                   label: const Text("New"),
-                                  onPressed: () => _setEditMode(null, "", ""),
+                                  onPressed: () => _setEditMode(null, "", "", null),
                                 ),
                                 Expanded(
                                   child: TextField(
@@ -522,33 +535,47 @@ class _MainState extends State<Main> {
                       ),
                       Visibility(
                         visible: _editorMode == .edit,
-                        child: Row(children: [
-                          Padding(
-                            padding: const .all(4),
-                            child: SizedBox(
-                              width: 400,
-                              child: TextField(
-                                controller: _currentTags,
-                                focusNode: _focusNodeTags,
-                                decoration: const InputDecoration(
-                                  label: Text("Tags:"),
-                                  border: const OutlineInputBorder(borderRadius: .all(.circular(10))),
-                                  hintText: "Tag1, Tag2, ..."
+                        child: Row(
+                          spacing: 10,
+                          children: [
+                            Padding(
+                              padding: const .all(4),
+                              child: SizedBox(
+                                width: 400,
+                                child: TextField(
+                                  controller: _currentTags,
+                                  focusNode: _focusNodeTags,
+                                  decoration: const InputDecoration(
+                                    label: Text("Tags:"),
+                                    border: const OutlineInputBorder(borderRadius: .all(.circular(10))),
+                                    hintText: "Tag1, Tag2, ..."
+                                  ),
+                                  onEditingComplete: _saveNote,
                                 ),
-                                onEditingComplete: _saveNote,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          FilledButton(style: ButtonStyle(
-                            backgroundColor: .all(Colors.blueAccent),
-                            minimumSize: const WidgetStatePropertyAll(Size(120, 50))),
-                            onPressed: _saveNote,
-                            child: Text(_currentNoteId == null ? "Save" : "Update",
-                              style: const TextStyle(fontSize: 18),
+                            FilledButton(style: ButtonStyle(
+                              backgroundColor: .all(Colors.blueAccent),
+                              minimumSize: const WidgetStatePropertyAll(Size(120, 50))),
+                              onPressed: _saveNote,
+                              child: Text(_currentNoteId == null ? "Save" : "Update",
+                                style: const TextStyle(fontSize: 18),
+                              ),
                             ),
-                          ),
-                        ]),
+                            Visibility(
+                              visible: _currentAttachment != null,
+                              child: IconButton(
+                                tooltip: "Delete attachment '${_currentAttachment?.name}'",
+                                icon: FaIcon(FontAwesomeIcons.paperclip, color: Colors.brown[800]),
+                                onPressed: () {
+                                  setState(() {
+                                    _currentAttachment = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       )],
                     ),
                   )],
@@ -608,9 +635,7 @@ class _MainState extends State<Main> {
 
     // archived notes
     if (note.isDeleted) {
-      const h1 = "Restore";
-      const msg = "Restore note from archive?";
-      await Utils.showAlert(h1, msg, .information, .yesNo, onYes: () async {
+      await Utils.showAlert("Restore", "Restore note from archive?", .information, .yesNo, onYes: () async {
         await model.restoreNoteById(note.id);
         _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
@@ -620,13 +645,13 @@ class _MainState extends State<Main> {
 
     // regular notes
     showContextMenuBox(context, "Update note", Utils.firstLine(note.data), [
-      TrixAction("Edit", true, false, () => _setEditMode(note.id, note.data, note.tags)),
-      TrixAction("Archive", false, false, () async {
+      TrixAction("Edit note", true, false, () => _setEditMode(note.id, note.data, note.tags, note.attachment)),
+      TrixAction("Archive note", false, false, () async {
         if (await model.archiveNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
       }),
-      TrixAction("Delete", false, true, () async {
+      TrixAction("Delete note", false, true, () async {
         if (await model.deleteNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
@@ -647,7 +672,7 @@ class _MainState extends State<Main> {
       onItemSelected: (item) async { // MenuItem::onSelected doesn't work
         switch (item.title) {
           case editTitle:
-            _setEditMode(note.id, note.data, note.tags);
+            _setEditMode(note.id, note.data, note.tags, note.attachment);
             break;
           case archiveTitle:
             if (await model.archiveNoteById(note.id))
@@ -753,7 +778,7 @@ class _MainState extends State<Main> {
     if (_currentText.text.trim().isEmpty) return;
 
     final model = ScopedModel.of<TheModel>(context);
-    final newId = await model.saveNote(_currentNoteId, _currentText.text, _currentTags.text, _oldTags);
+    final newId = await model.saveNote(_currentNoteId, _currentText.text, _currentTags.text, _oldTags, _currentAttachment);
     if (newId != null) {
       fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
       _webDavLoading = model.uploadWebDav();
@@ -777,7 +802,7 @@ class _MainState extends State<Main> {
     final i = await PackageInfo.fromPlatform();
     final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2026\nmitrakov-artem@yandex.ru\nAll rights reserved.";
     if (Platform.isWindows) // bug in Windows: F1.keyUp event is swallowed by ModalDialog event loop => let's wait for 300 msec.
-      Future.delayed(Duration(milliseconds: 300), () => Utils.showAlert(i.appName, text, .information, .ok)); // TODO chekc Linux?
+      Future.delayed(Duration(milliseconds: 300), () => Utils.showAlert(i.appName, text, .information, .ok));
     else Utils.showAlert(i.appName, text, .information, .ok);
   }
 
@@ -849,6 +874,7 @@ class _MainState extends State<Main> {
         NativeMenuItem(label: " ᎒᎒᎒  Insert Table          Ctrl+Shift+T",onSelected: ()=>Utils.insertText(_currentText, _tableStr)),
         NativeMenuItem(label: "🔗 Insert Link             Ctrl+Shift+L",onSelected: ()=>Utils.insertText(_currentText, _linkStr)),
         NativeMenuItem(label: "🕓 Insert DateTime   Ctrl+Shift+D",         onSelected: ()=>Utils.insertText(_currentText, _nowStr)),
+        NativeMenuItem(label: "💾 Insert Attachment  Ctrl+Shift+A",        onSelected: _insertAttachment),
       ]),
       NativeSubmenu(label: "Navigate", children: [
         NativeMenuItem(label: "⇐ Back          Ctrl+[", onSelected: () => _history(_back, _forward)),
@@ -860,11 +886,41 @@ class _MainState extends State<Main> {
     ]);
   }
 
-  void _setEditMode(int? noteId, String text, String tags) {
+  void _insertAttachment() async {
+    // All State variables MUST be updated in _setEditMode()/_setReadMode();
+    // here is the only exception for "_currentAttachment" to avoid introduction of "Controller" pattern
+    var ok = true;
+    if (_currentAttachment != null) {
+      final msg = "Are you sure you want to overwrite the existing attachment:\n\n'${_currentAttachment?.name}'?";
+      await Utils.showAlert("Attachment exists", msg, .hand, .yesNo, onNo: () => ok = false);
+    }
+
+    if (ok) {
+      final result = await FilePicker.platform.pickFiles(dialogTitle: "Add attachment", withData: true, lockParentWindow: true);
+      final file = result?.files.firstOrNull;
+      if (file != null) {
+        if (file.bytes != null) {
+          if (file.bytes!.length > 2*1024*1024) {
+            const msg = "Attachments greater than 2 Mb are NOT recommended.\n\nContinue?";
+            await Utils.showAlert("File is too large", msg, .stop, .yesNo, onNo: () => ok = false);
+          }
+          if (ok) {
+            setState(() {
+              _currentAttachment = Attachment(file.name, file.bytes!);
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /// ALL state changes MUST be done in _setEditMode() and _setReadMode(). Keep these methods at the end of the class
+  void _setEditMode(int? noteId, String text, String tags, Attachment? attachment) {
     setState(() {
       _currentText.text = text;
       _currentTags.text = tags;
       _currentNoteId = noteId;
+      _currentAttachment = attachment;
       _oldTags = tags;
       _notes = [];
       _editorMode = .edit;
@@ -873,6 +929,7 @@ class _MainState extends State<Main> {
     _focusNodeText.requestFocus();
   }
 
+  /// ALL state changes MUST be done in _setEditMode() and _setReadMode(). Keep these methods at the end of the class
   void _setReadMode(Search sch, {bool pushToHistory = true}) async {
     final model = ScopedModel.of<TheModel>(context);
     final Iterable<Note> notes =
@@ -886,6 +943,7 @@ class _MainState extends State<Main> {
       _currentText.text = "";
       _currentTags.text = "";
       _currentNoteId = null;
+      _currentAttachment = null;
       _oldTags = "";
       _notes = notes;
       _editorMode = .read;
@@ -902,6 +960,10 @@ class _MainState extends State<Main> {
   void dispose() {
     _currentText.dispose();
     _currentTags.dispose();
+    _focusNodeGlobal.dispose();
+    _focusNodeText.dispose();
+    _focusNodeTags.dispose();
+    _focusNodeSearch.dispose();
     super.dispose();
   }
 }
@@ -932,4 +994,5 @@ class ForwardIntent        extends Intent {}
 class InsertTableIntent    extends Intent {}
 class InsertDateIntent     extends Intent {}
 class InsertLinkIntent     extends Intent {}
+class InsertAttachment     extends Intent {}
 class CloseAppIntent       extends Intent {}

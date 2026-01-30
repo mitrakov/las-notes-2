@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/utils.dart';
 
@@ -43,22 +46,31 @@ class _CollapsibleState extends State<Collapsible> {
   @override
   Widget build(BuildContext context) {
     final text = widget.note.data;
+    final attachment = widget.note.attachment;
     final md = _isExpanded || Utils.linesCount(text) < linesToCollapse ? _markdownWidget(text) : ExpansionTile(
       title: _markdownWidget(Utils.firstLines(text, 4).join("\n") + "\n...", selectable: false),
       children: [_markdownWidget(text)],
       onExpansionChanged: (bool expanded) { setState(() {_isExpanded = expanded;}); },
     );
-    final tags = Row(mainAxisSize: .min, spacing: 10, children: Utils.split(widget.note.tags).map((tag) =>
-        Container(
-          decoration: BoxDecoration(
-            color: .fromARGB(155, 216, 230, 245),
-            border: .all(color: Colors.blueAccent, width: 0.5,),
-            borderRadius: .circular(8),
-          ),
-          padding: const .symmetric(horizontal: 7),
-          child: Text(tag, style: TextStyle(color: Colors.blueAccent, fontSize: 12)),
-        )
-    ).toList());
+    final tags = Row(mainAxisSize: .min, spacing: 10, children: [...Utils.split(widget.note.tags).map((tag) =>
+      Container(
+        decoration: BoxDecoration(
+          color: .fromARGB(155, 216, 230, 245),
+          border: .all(color: Colors.blueAccent, width: 0.5,),
+          borderRadius: .circular(8),
+        ),
+        padding: const .symmetric(horizontal: 7),
+        child: Text(tag, style: TextStyle(color: Colors.blueAccent, fontSize: 12)),
+      )
+    ), if (attachment != null)
+      IconButton(
+        tooltip: attachment.name,
+        icon: FaIcon(FontAwesomeIcons.paperclip, color: Colors.brown[800]),
+        iconSize: 13,
+        onPressed: _downloadAttachment,
+      )]
+    );
+
     return Stack(alignment: .topRight, children: [md, tags]);
   }
 
@@ -83,5 +95,20 @@ class _CollapsibleState extends State<Collapsible> {
         ),
       ]),
     );
+  }
+
+  void _downloadAttachment() async {
+    final attachment = widget.note.attachment;
+    if (attachment == null) return;
+
+    final path = await FilePicker.platform.saveFile(
+      dialogTitle: "Download attachment (${attachment.data.length} bytes)",
+      fileName: attachment.name,
+      lockParentWindow: true
+    );
+
+    if (path != null) try {
+      File(path).writeAsBytesSync(attachment.data.toList(), flush: true);
+    } catch (e) { Utils.showAlert("Error", e.toString(), .error, .ok); }
   }
 }

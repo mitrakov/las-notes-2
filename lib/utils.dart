@@ -10,6 +10,7 @@ class Utils {
 
   static Iterable<String> firstLines(String str, int n) => str.split("\n").take(n);
 
+  // on MacOS, supported icons only .stop, .error and .hand (all look like ⚠️)
   static Future<bool> showAlert(
       String title, String text, IconStyle icon, AlertButtonStyle buttons, {VoidCallback? onYes, VoidCallback? onNo}) async {
     final result = await FlutterPlatformAlert.showAlert(

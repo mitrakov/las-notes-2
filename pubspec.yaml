@@ -1,7 +1,7 @@
 # MacOS: built with Flutter 3.38.5 (Apple M1), Dart 3.10.4, CocoaPods 1.16.2
 name: lasnotes
 description: "Las Notes: offline markdown editor for iOS, MacOS, Windows and Linux"
-version: 2.5.0+24
+version: 2.5.1+25
 
 environment:
   sdk: '>=3.10.3 <4.0.0'

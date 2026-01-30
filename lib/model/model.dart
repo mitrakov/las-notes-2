@@ -68,7 +68,7 @@ final class TheModel extends Model {
     final result = await FilePicker.platform
         .pickFiles(dialogTitle: "Open a DB file", type: FileType.custom, allowedExtensions: ["db", "dbx"], lockParentWindow: true);
     final path = result?.files.firstOrNull?.path;
-    if (path != null && context.mounted)
+    if (path != null)
       openFile(context, path);
   }
 
@@ -139,8 +139,7 @@ final class TheModel extends Model {
   }
 
   Future<bool> archiveNoteById(int noteId) {
-    const text = "Are you sure you want to archive this note?";
-    return Utils.showAlert("Archive note", text, .question, .yesNo, onYes: () async {
+    return Utils.showAlert("Archive note", "Are you sure you want to archive this note?", .question, .yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
     });
   }
@@ -156,7 +155,7 @@ final class TheModel extends Model {
     });
   }
 
-  FutureOr<int?> saveNote(int? noteId, String data, String newTags, String oldTags) async {
+  FutureOr<int?> saveNote(int? noteId, String data, String newTags, String oldTags, Attachment? attachment) async {
     final tags = Utils.split(newTags);
 
     if (!_db.isConnected()) return null;
@@ -168,13 +167,13 @@ final class TheModel extends Model {
 
     if (noteId != null) {
       // UPDATE
-      await _db.updateNote(noteId, data);
+      await _db.updateNote(noteId, data, attachment);
       await _updateTags(noteId, newTags, oldTags);
       Utils.showAlert("Done", "Note updated", .information, .ok);
       return noteId;
     } else {
       // INSERT
-      final newNoteId = await _db.insertNote(data);
+      final newNoteId = await _db.insertNote(data, attachment);
       await _db.linkTagsToNote(newNoteId, tags);
       Utils.showAlert("Done", "Note added", .information, .ok);
       return newNoteId;

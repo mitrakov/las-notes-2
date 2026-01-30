@@ -1,9 +1,10 @@
+import 'dart:typed_data';
 import 'package:sqflite_sqlcipher/sqflite.dart'; // #ifdef WIN_OR_LINUX import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:lasnotes/model/note.dart';
 
 // IMPORTANT! Remove sandbox in MacOS and iOS .*entitlements files
 class SQLiteDatabase {
-  static const _GLOBAL_SCHEMA_VERSION = 5;
+  static const _GLOBAL_SCHEMA_VERSION = 6;
   Database? _db;
 
   Future<void> openDb(String path, {String? password}) async {
@@ -80,25 +81,28 @@ class SQLiteDatabase {
   bool isConnected() => _db?.isOpen ?? false;
 
   /// returns new generated note_id > 0
-  Future<int> insertNote(String data) async {
+  Future<int> insertNote(String data, Attachment? attmt) async {
     return await _db?.transaction((tx) async {
-      final noteId = await tx.rawInsert("INSERT INTO note DEFAULT VALUES;"); // don't use "RETURNING note_id" in SQFlite
+      final noteId = await tx.rawInsert("INSERT INTO note (attachment_name, attachment) VALUES (?, ?);", [attmt?.name, attmt?.data]);
       await tx.rawInsert("INSERT INTO notedata (rowid, data) VALUES (?, ?);", [noteId, data]);
       return noteId;
     }) ?? 0;
   }
 
+  /// updates a note with all given values (e.g. if you provide attachment = NULL, it will be dropped).
   /// returns the number of rows affected
-  Future<void> updateNote(int noteId, String data) async {
+  Future<void> updateNote(int noteId, String data, Attachment? attachment) async {
     await _db?.transaction((tx) async {
       tx.rawUpdate("UPDATE notedata SET data = ? WHERE rowid = ?;", [data, noteId]);
-      tx.rawUpdate("UPDATE note SET updated_at = CURRENT_TIMESTAMP WHERE note_id = ?;", [noteId]);
+      tx.rawUpdate("UPDATE note SET attachment_name = ?, attachment = ?, updated_at = CURRENT_TIMESTAMP WHERE note_id = ?;",
+          [attachment?.name, attachment?.data, noteId]);
     });
   }
 
   Future<void> softDeleteNote(int noteId, bool deleted) async {
     // Sqflite error: use 1/0 instead of BOOL (https://github.com/tekartik/sqflite/blob/master/sqflite/doc/supported_types.md)
-    _db?.rawUpdate("UPDATE note SET is_deleted = ?, updated_at = CURRENT_TIMESTAMP WHERE note_id = ?;", [deleted ? 1 : 0, noteId]);
+    const sql = "UPDATE note SET is_deleted = ?, updated_at = CURRENT_TIMESTAMP WHERE note_id = ?;";
+    await _db?.rawUpdate(sql, [deleted ? 1 : 0, noteId]);
   }
 
   Future<void> deleteNote(int noteId) async {
@@ -111,7 +115,7 @@ class SQLiteDatabase {
 
   Future<Iterable<Note>> getAllNotes(bool fetchDeleted) async {
     final dbResult = await _db?.rawQuery("""
-      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, is_deleted
+      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, attachment_name, attachment, is_deleted
       FROM note
       INNER JOIN notedata ON note_id = notedata.rowid
       INNER JOIN note_to_tag USING (note_id)
@@ -125,7 +129,7 @@ class SQLiteDatabase {
 
   Future<Iterable<Note>> getRandomNotes(bool fetchDeleted, int limit) async {
     final dbResult = await _db?.rawQuery("""
-      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, is_deleted
+      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, attachment_name, attachment, is_deleted
       FROM note
       INNER JOIN notedata ON note_id = notedata.rowid
       INNER JOIN note_to_tag USING (note_id)
@@ -155,7 +159,7 @@ class SQLiteDatabase {
 
   Future<Note?> searchByID(int id) async {
     final dbResult = await _db?.rawQuery("""
-      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, is_deleted
+      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, attachment_name, attachment, is_deleted
       FROM note
       INNER JOIN notedata ON note_id = notedata.rowid
       INNER JOIN note_to_tag USING (note_id)
@@ -168,7 +172,7 @@ class SQLiteDatabase {
 
   Future<Iterable<Note>> searchByTag(String tag, bool fetchDeleted) async {
     final dbResult = await _db?.rawQuery("""
-      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, is_deleted
+      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, attachment_name, attachment, is_deleted
       FROM note
       INNER JOIN notedata ON note_id = notedata.rowid
       INNER JOIN note_to_tag USING (note_id)
@@ -185,7 +189,7 @@ class SQLiteDatabase {
     if (word.isEmpty) return [];
 
     final dbResult = await _db?.rawQuery("""
-      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, is_deleted
+      SELECT note_id, data, GROUP_CONCAT(name, ', ') AS tags, attachment_name, attachment, is_deleted
       FROM note
       INNER JOIN notedata ON note_id = notedata.rowid
       INNER JOIN note_to_tag USING (note_id)
@@ -256,11 +260,18 @@ class SQLiteDatabase {
           await tx.execute("UPDATE tag SET name = (trim(name) || '_bugfix_tag_id_' || tag_id) WHERE name != trim(name);");
           print("Migration 4 -> 5 done");
         }
+        if (oldVersion < 6) { // add attachments
+          await tx.execute("ALTER TABLE note ADD COLUMN attachment_name VARCHAR(128) NULL;");
+          await tx.execute("ALTER TABLE note ADD COLUMN attachment BLOB NULL;");
+          print("Migration 5 -> 6 done");
+        }
         await tx.execute("PRAGMA user_version=$_GLOBAL_SCHEMA_VERSION");
       });
     }
   }
 
-  Note toNote(Map<String, Object?> e) =>
-    Note(id: e["note_id"] as int, data: e["data"] as String, tags: e["tags"] as String, isDeleted: e["is_deleted"] as int != 0);
+  Note toNote(Map<String, Object?> e) {
+    final att = e["attachment"] != null ? Attachment(e["attachment_name"] as String? ?? "a.bin", e["attachment"] as Uint8List) : null;
+    return Note(e["note_id"] as int, e["data"] as String, e["tags"] as String, att, e["is_deleted"] as int != 0);
+  }
 }
