@@ -348,7 +348,7 @@ class _MainState extends State<Main> {
                 shortcut: SingleActivator(LogicalKeyboardKey.keyN, meta: true, shift: true),
               ),
               PlatformMenuItem(
-                label: "New DB File (encrypted)",
+                label: "New DB File Encrypted",
                 onSelectedIntent: NewDbxFileIntent(),
                 shortcut: SingleActivator(LogicalKeyboardKey.keyE, meta: true, shift: true),
               ),
@@ -860,27 +860,27 @@ class _MainState extends State<Main> {
         NativeSubmenu(label: "Open Recent", children: Settings.local.recentFiles.map((path) =>
           NativeMenuItem(label: path, onSelected: () => model.openFile(context, path))
         ).toList()),
-        NativeMenuItem(label: "New DB File                    Ctrl+Shift+N", onSelected: () => model.newFile(context)),
-        NativeMenuItem(label: "New DB File (encrypted)",                   onSelected: () => model.newFile(context, encrypted: true)),
-        NativeMenuItem(label: "Open...                             Ctrl+O",  onSelected: () => model.openFileWithDialog(context)),
-        NativeMenuItem(label: "Open WebDAV...             Ctrl+Shift+O",     onSelected: () => _showWebDavDialogDesktop()),
+        NativeMenuItem(label: "New DB File (Ctrl+Shift+N)",           onSelected: () => model.newFile(context)),
+        NativeMenuItem(label: "New DB File Encrypted (Ctrl+Shift+E)", onSelected: () => model.newFile(context, encrypted: true)),
+        NativeMenuItem(label: "Open... (Ctrl+O)",                     onSelected: () => model.openFileWithDialog(context)),
+        NativeMenuItem(label: "Open WebDAV... (Ctrl+Shift+O)",        onSelected: () => _showWebDavDialogDesktop()),
         const NativeMenuDivider(),
-        NativeMenuItem(label: "Close DB File                  Ctrl+W",       onSelected: model.closeFile),
+        NativeMenuItem(label: "Close DB File (Ctrl+W)",               onSelected: model.closeFile),
         const NativeMenuDivider(),
-        NativeMenuItem(label: "Quit                                 Alt+F4", onSelected: () => exit(0)),
+        NativeMenuItem(label: "Quit (Alt+F4)",                        onSelected: () => exit(0)),
       ]),
       NativeSubmenu(label: "Edit", children: [
-        NativeMenuItem(label: " ᎒᎒᎒  Insert Table          Ctrl+Shift+T",onSelected: ()=>Utils.insertText(_currentText, _tableStr)),
-        NativeMenuItem(label: "🔗 Insert Link             Ctrl+Shift+L",onSelected: ()=>Utils.insertText(_currentText, _linkStr)),
-        NativeMenuItem(label: "🕓 Insert DateTime   Ctrl+Shift+D",         onSelected: ()=>Utils.insertText(_currentText, _nowStr)),
-        NativeMenuItem(label: "💾 Insert Attachment  Ctrl+Shift+A",        onSelected: _insertAttachment),
+        NativeMenuItem(label: "᎒᎒᎒ Insert Table      (Ctrl+Shift+T)",  onSelected: () => Utils.insertText(_currentText, _tableStr)),
+        NativeMenuItem(label: "🔗 Insert Link       (Ctrl+Shift+L)",  onSelected: () => Utils.insertText(_currentText, _linkStr)),
+        NativeMenuItem(label: "🕓 Insert DateTime   (Ctrl+Shift+D)",  onSelected: () => Utils.insertText(_currentText, _nowStr)),
+        NativeMenuItem(label: "📎 Insert Attachment (Ctrl+Shift+A)",  onSelected: _insertAttachment),
       ]),
       NativeSubmenu(label: "Navigate", children: [
-        NativeMenuItem(label: "⇐ Back          Ctrl+[", onSelected: () => _history(_back, _forward)),
-        NativeMenuItem(label: "⇒ Forward    Ctrl+]",       onSelected: () => _history(_forward, _back)),
+        NativeMenuItem(label: "⇐ Back (Ctrl+[)",                      onSelected: () => _history(_back, _forward)),
+        NativeMenuItem(label: "⇒ Forward (Ctrl+])",                   onSelected: () => _history(_forward, _back)),
       ]),
       NativeSubmenu(label: "Help", children: [
-        NativeMenuItem(label: "About Las Notes    F1", onSelected: _showAboutDialog),
+        NativeMenuItem(label: "About Las Notes (F1)",                 onSelected: _showAboutDialog),
       ])
     ]);
   }
