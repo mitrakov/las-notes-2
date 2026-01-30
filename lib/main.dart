@@ -558,9 +558,7 @@ class _MainState extends State<Main> {
                               backgroundColor: .all(Colors.blueAccent),
                               minimumSize: const WidgetStatePropertyAll(Size(120, 50))),
                               onPressed: _saveNote,
-                              child: Text(_currentNoteId == null ? "Save" : "Update",
-                                style: const TextStyle(fontSize: 18),
-                              ),
+                              child: Text(_currentNoteId == null ? "Save" : "Update", style: const TextStyle(fontSize: 18)),
                             ),
                             Visibility(
                               visible: _currentAttachment != null,
