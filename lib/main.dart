@@ -570,6 +570,7 @@ class _MainState extends State<Main> {
                                 onPressed: () {
                                   setState(() {
                                     _currentAttachment = null;
+                                    _focusNodeText.requestFocus();
                                   });
                                 },
                               ),
