@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:sqflite_sqlcipher/sqflite.dart'; // #ifdef WIN_OR_LINUX import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:typed_data';
 import 'package:lasnotes/model/note.dart';
 
 // IMPORTANT! Remove sandbox in MacOS and iOS .*entitlements files
