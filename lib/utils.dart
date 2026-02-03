@@ -39,12 +39,18 @@ class Utils {
     }
   }
 
-  static void insertText(TextEditingController ctrl, String value) {
+  static void insertText(TextEditingController ctrl, String value, [String? selectedSubstring]) {
+    if (selectedSubstring != null && !value.contains(selectedSubstring)) throw Exception("SelectedString must be in value");
+
     final pos = ctrl.selection.start;
     final text = ctrl.text;
     final start = text.substring(0, pos);
     final end = text.substring(pos);
     ctrl.text = "$start$value$end";
-    ctrl.selection = .collapsed(offset: pos + value.length);
+    ctrl.selection = selectedSubstring != null
+        ? TextSelection(
+          baseOffset: pos + value.indexOf(selectedSubstring),
+          extentOffset: pos + value.indexOf(selectedSubstring) + selectedSubstring.length)
+        : .collapsed(offset: pos + value.length);
   }
 }

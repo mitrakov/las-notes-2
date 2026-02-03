@@ -111,7 +111,7 @@ class Main extends StatefulWidget {
 
 class _MainState extends State<Main> {
   static const _tableStr = "| A| B| C|\n|:--|---|--:|\n|  |  |  |\n|  |  |  |\n|  |  |  |\n";
-  static const _linkStr = "[Link](https://)\n";
+  static const _linkStr = "[Link](https://)";
 
   // === STATE VARS ===                         // !!! update them only in _setEditMode() and _setReadMode()
   final _currentText = TextEditingController(); // main text in add/edit mode
@@ -138,7 +138,7 @@ class _MainState extends State<Main> {
   var _forward = TrixStack<Search>();           // ➡️ stack history
 
   // Simple getters/setters
-  String get _nowStr => "${DateTime.now().toString().substring(0, 19)}\n";
+  String get _nowStr => "${DateTime.now().toString().substring(0, 19)} ";
   bool get fileChanged => _fileChanged;
   set fileChanged(bool v) {
     if (Platform.isIOS && !ScopedModel.of<TheModel>(context).webDav.isConnected) // for WebDAV, it's OK
@@ -437,7 +437,7 @@ class _MainState extends State<Main> {
             NewDbxFileIntent:     CallbackAction(onInvoke: (_) => model.newFile(context, encrypted: true)),
             OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => _showWebDavDialogDesktop()),
             InsertTableIntent:    CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _tableStr)),
-            InsertLinkIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _linkStr)),
+            InsertLinkIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _linkStr, "https://")),
             InsertDateIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _nowStr)),
             InsertAttachment:     CallbackAction(onInvoke: (_) => _insertAttachment()),
             GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
@@ -861,7 +861,7 @@ class _MainState extends State<Main> {
           NativeMenuItem(label: path, onSelected: () => model.openFile(context, path))
         ).toList()),
         NativeMenuItem(label: "New DB File                    Ctrl+Shift+N", onSelected: () => model.newFile(context)),
-        NativeMenuItem(label: "New DB File Encrypted  Ctrl+Shift+E", onSelected: () => model.newFile(context, encrypted: true)),
+        NativeMenuItem(label: "New DB File Encrypted  Ctrl+Shift+E",       onSelected: () => model.newFile(context, encrypted: true)),
         NativeMenuItem(label: "Open...                             Ctrl+O",onSelected: () => model.openFileWithDialog(context)),
         NativeMenuItem(label: "Open WebDAV...             Ctrl+Shift+O",   onSelected: () => _showWebDavDialogDesktop()),
         const NativeMenuDivider(),
@@ -870,8 +870,10 @@ class _MainState extends State<Main> {
         NativeMenuItem(label: "Quit                                 Ctrl+Q", onSelected: () => exit(0)),
       ]),
       NativeSubmenu(label: "Edit", children: [
-        NativeMenuItem(label: "᎒᎒᎒ Insert Table               Ctrl+Shift+T", onSelected: () => Utils.insertText(_currentText, _tableStr)),
-        NativeMenuItem(label: "🔗 Insert Link                Ctrl+Shift+L",onSelected: () => Utils.insertText(_currentText, _linkStr)),
+        NativeMenuItem(label: "᎒᎒᎒ Insert Table               Ctrl+Shift+T", onSelected:()=>Utils.insertText(_currentText, _tableStr)),
+        NativeMenuItem(label: "🔗 Insert Link                Ctrl+Shift+L",
+                                                               onSelected: () => Utils.insertText(_currentText, _linkStr, "https://"),
+        ),
         NativeMenuItem(label: "🕓 Insert DateTime      Ctrl+Shift+D",      onSelected: () => Utils.insertText(_currentText, _nowStr)),
         NativeMenuItem(label: "📎 Insert Attachment   Ctrl+Shift+A",       onSelected: _insertAttachment),
       ]),
