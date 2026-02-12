@@ -52,7 +52,7 @@ flutter clean
 
 # git
 git status
-git add "dist/lasnotes-linux-$VERSION.zip"
+git add .
 git status
 git commit -m "Release $VERSION for Linux"
 git status
