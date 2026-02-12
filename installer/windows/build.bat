@@ -180,7 +180,7 @@ call flutter clean
 
 :: git
 git status
-git add "%OUTPUT_DIR%\%INSTALLER_NAME%"
+git add .
 git status
 git commit -m "Release %VERSION% for Windows"
 git status
