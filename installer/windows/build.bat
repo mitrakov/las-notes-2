@@ -16,7 +16,7 @@ call :require git
 if %ERRORLEVEL% neq 0 exit /b 1
 call :require iscc
 if %ERRORLEVEL% neq 0 (
-    echo Inno Setup Compiler (iscc.exe) not found in PATH
+    echo Inno Setup Compiler iscc.exe not found in PATH
     echo Please install Inno Setup or add it to PATH
     exit /b 1
 )
@@ -57,7 +57,7 @@ if "!SIGNTOOL_AVAILABLE!"=="1" (
 
 :: modify db.dart file for Windows
 copy /y lib\model\db.dart lib\model\db.dart.bkp >nul
-powershell -Command "(Get-Content lib\model\db.dart) -replace 'password: password,', '' -replace 'sqflite_sqlcipher\\sqflite.dart', 'sqflite_common_ffi\\sqflite_ffi.dart' | Set-Content lib\model\db.dart"
+powershell -Command "(Get-Content lib\model\db.dart) -replace 'password: password,', '' -replace 'sqflite_sqlcipher/sqflite.dart', 'sqflite_common_ffi/sqflite_ffi.dart' | Set-Content lib\model\db.dart"
 
 echo Timeout
 timeout /t 5
