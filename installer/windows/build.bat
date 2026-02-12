@@ -179,8 +179,11 @@ echo Installer created successfully: %OUTPUT_DIR%\%INSTALLER_NAME%
 call flutter clean
 
 :: git
+git status
 git add "%OUTPUT_DIR%\%INSTALLER_NAME%"
+git status
 git commit -m "Release %VERSION% for Windows"
+git status
 set /p PUSH_RESPONSE="Git push? (Y/n): "
 if /i not "%PUSH_RESPONSE%"=="n" (
     git push

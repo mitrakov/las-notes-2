@@ -28,14 +28,14 @@ fullVersion=$(grep "version: " pubspec.yaml)
 VERSION=$(echo "$fullVersion" | cut -d " " -f 2 | cut -d "+" -f 1)   # BUILD_NUMBER=$(echo "$fullVersion" | cut -d "+" -f 2)
 
 # modify db.dart file for Linux
-LC_ALL=C sed -i '.bkp' 's/password: password,//g; s/sqflite_sqlcipher\/sqflite.dart/sqflite_common_ffi\/sqflite_ffi.dart/g' lib/model/db.dart
+sed -i.bkp 's/password: password,//g; s/sqflite_sqlcipher\/sqflite.dart/sqflite_common_ffi\/sqflite_ffi.dart/g' lib/model/db.dart
 flutter -v build linux
 mv -v lib/model/db.dart.bkp lib/model/db.dart
 
 # copy SQLite library
 [ -f "sqlcipher/linux/libsqlite3.so" ] || { echo "SQLite library missing"; exit 1; }
 [ -d "$BUILD_PATH/bundle" ] || { echo "Bundle directory missing"; exit 1; }
-cp -v sqlcipher/linux/libsqlite3.so $BUILD_PATH/bundle
+cp -v sqlcipher/linux/libsqlite3.so $BUILD_PATH/bundle/lib
 
 # make a *.zip
 pushd $BUILD_PATH && pwd
@@ -51,8 +51,11 @@ mv -v "$BUILD_PATH/lasnotes-linux-$VERSION.zip" dist/
 flutter clean
 
 # git
+git status
 git add "dist/lasnotes-linux-$VERSION.zip"
+git status
 git commit -m "Release $VERSION for Linux"
+git status
 read -p "Git push? (Y/n): " -r
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
   git push
