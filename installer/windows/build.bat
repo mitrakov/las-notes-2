@@ -60,7 +60,7 @@ copy /y lib\model\db.dart lib\model\db.dart.bkp >nul
 powershell -Command "(Get-Content lib\model\db.dart) -replace 'password: password,', '' -replace 'sqflite_sqlcipher/sqflite.dart', 'sqflite_common_ffi/sqflite_ffi.dart' | Set-Content lib\model\db.dart"
 
 :: build
-call flutter -v build windows
+:: :: :: call flutter -v build windows
 if %ERRORLEVEL% neq 0 (
     echo Flutter build failed
     move /y lib\model\db.dart.bkp lib\model\db.dart >nul
@@ -127,21 +127,27 @@ if not exist "%INNO_SCRIPT%" (
 )
 
 :: copy Inno Setup script with version replaced
-set INNO_TEMP=%TEMP%\inno-setup-%VERSION%.iss
-copy /y "%INNO_SCRIPT%" "%INNO_TEMP%" >nul
+::set INNO_TEMP=inno-setup-%VERSION%.iss
+::copy /y "%INNO_SCRIPT%" "%INNO_TEMP%" >nul
 
 :: replace version placeholder in Inno script
-powershell -Command "(Get-Content '%INNO_TEMP%') -replace '__THE_VERSION__', '%VERSION%' | Set-Content '%INNO_TEMP%'"
+
+
+
+
 
 :: run Inno Setup compiler
 echo Compiling Inno Setup installer...
-pushd "%WORK_DIR%"
-iscc "%INNO_TEMP%" /O"%OUTPUT_DIR%" /F"lasnotes-windows-%VERSION%-setup"
+pushd "%WORK_DIR%\installer\windows"
+if not exist "Las Notes" mkdir "Las Notes"
+xcopy /v "%WORK_DIR%\%BUILD_PATH%" "Las Notes" /S >nul
+powershell -Command "(Get-Content 'inno-setup.iss') -replace '__THE_VERSION__', '%VERSION%' | Set-Content 'inno-setup-2.iss'"
+iscc  "inno-setup-2.iss" /O"%OUTPUT_DIR%" /F"lasnotes-windows-%VERSION%-setup"
 set ISCC_RESULT=%ERRORLEVEL%
 popd
 
 :: clean up temp file
-del /f /q "%INNO_TEMP%" 2>nul
+:: del /f /q "%INNO_TEMP%" 2>nul
 
 if %ISCC_RESULT% neq 0 (
     echo Inno Setup compilation failed
