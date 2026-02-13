@@ -45,29 +45,10 @@ Build for iOS:
   rename and move *.ipa file to dist/
 
 Build for Windows:
-  bump version in "installer\windows\inno-setup.iss" (align with pubspec.yaml)
-  lib\model\db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
-  flutter build windows
-  copy files from "build\windows\x64\runner\Release" to "installer\windows\Las Notes"
-  insert RuToken and run (PIN 12345678):
-    signtool sign /v /a /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td SHA256 /fd SHA256 '*.exe' '*.dll'
-    signtool verify /v 'LasNotes.exe'
-  add there "sqlite3.dll" from "sqlcipher\windows" folder
-  add there "vcruntime140_1.dll" from "installer\windows" folder
-  Compile "installer\windows\inno-setup.iss" with InnoSetup Compiler (CTRL+F9)
-    signtool sign /v /a /tr http://timestamp.globalsign.com/tsa/r6advanced1 /td SHA256 /fd SHA256 '*.exe'
-    signtool verify /v 'lasnotes-win64.exe'
-  move *.exe file to dist\
+  installer\windows\build.bat
 
 Build for Linux:
-  bump version in pubspec.yaml
-  lib/model/db.dart: replace "// #ifdef WIN_OR_LINUX " directives and fix errors (don't commit changes)
-  flutter build linux
-  go to: build/linux/x64/release/bundle and rename "bundle" to "lasnotes"
-  add "libsqlite3.so" to "lib" from "sqlcipher/linux" folder
-  run: zip -r9 lasnotes-linux-x.y.z.zip lasnotes/
-  TO-DO: package to .rpm or .deb images
-  move *.zip file to dist/
+  installer/linux/build.sh
 */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
