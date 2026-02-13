@@ -60,7 +60,7 @@ copy /y lib\model\db.dart lib\model\db.dart.bkp >nul
 powershell -Command "(Get-Content lib\model\db.dart) -replace 'password: password,', '' -replace 'sqflite_sqlcipher/sqflite.dart', 'sqflite_common_ffi/sqflite_ffi.dart' | Set-Content lib\model\db.dart"
 
 :: build
-:: :: :: call flutter -v build windows
+call flutter -v build windows
 if %ERRORLEVEL% neq 0 (
     echo Flutter build failed
     move /y lib\model\db.dart.bkp lib\model\db.dart >nul
@@ -178,6 +178,8 @@ if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
 
 echo Installer created successfully: %INSTALLER_NAME%
 move /y %INSTALLER_NAME% "%WORK_DIR%/dist" >nul
+del "inno-setup-2.iss" 2>nul
+rmdir /s /q "Las Notes"
 popd
 
 :: finish
@@ -187,6 +189,9 @@ call flutter clean
 git status
 git add .
 git status
+
+exit /b 0
+
 git commit -m "Release %VERSION% for Windows"
 git status
 set /p PUSH_RESPONSE="Git push? (Y/n): "
