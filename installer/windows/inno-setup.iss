@@ -1,5 +1,5 @@
 #define MyAppName "Las Notes"
-#define MyAppVersion "2.5.2"
+#define MyAppVersion "__THE_VERSION__"
 #define MyAppPublisher "Artem Mitrakov"
 #define MyAppURL "https://github.com/mitrakov/las-notes-2"
 #define MyAppExeName "LasNotes.exe"

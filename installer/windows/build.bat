@@ -59,11 +59,8 @@ if "!SIGNTOOL_AVAILABLE!"=="1" (
 copy /y lib\model\db.dart lib\model\db.dart.bkp >nul
 powershell -Command "(Get-Content lib\model\db.dart) -replace 'password: password,', '' -replace 'sqflite_sqlcipher/sqflite.dart', 'sqflite_common_ffi/sqflite_ffi.dart' | Set-Content lib\model\db.dart"
 
-echo Timeout
-timeout /t 5
-
 :: build
-call flutter -v build windows --release
+call flutter -v build windows
 if %ERRORLEVEL% neq 0 (
     echo Flutter build failed
     move /y lib\model\db.dart.bkp lib\model\db.dart >nul
@@ -81,13 +78,13 @@ if not exist "sqlcipher\windows\sqlite3.dll" (
 if not exist "%BUILD_PATH%" (
     echo Error: Build directory missing at %BUILD_PATH%
     exit /b 1
-)
-copy /v sqlcipher\windows\sqlite3.dll "%BUILD_PATH%\lib" >nul
+)   
+copy /v sqlcipher\windows\sqlite3.dll "%BUILD_PATH%" >nul
 if %ERRORLEVEL% neq 0 (
     echo Failed to copy SQLite library
     exit /b 1
 )
-copy /v installer\windows\vcruntime140_1.dll "%BUILD_PATH%\lib" >nul
+copy /v installer\windows\vcruntime140_1.dll "%BUILD_PATH%" >nul
 if %ERRORLEVEL% neq 0 (
     echo Failed to copy vcruntime library
     exit /b 1
@@ -107,7 +104,7 @@ if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
 
     :: Sign all DLLs and EXEs
     echo Signing DLL files...
-    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 /pwd "%TEMP%\cert_pw.txt" '*.exe' '*.dll'
+    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 /p 12345678 '*.exe' '*.dll'
     if %ERRORLEVEL% neq 0 exit /b 1
 
     del /f /q "%TEMP%\cert_pw.txt" 2>nul
@@ -116,7 +113,7 @@ if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
     echo Signing complete.
 ) else (
     if "!SIGNTOOL_AVAILABLE!"=="1" (
-        echo Skipping code signing (no password provided)
+        echo Skipping code signing: no password provided
     )
 )
 
@@ -134,7 +131,7 @@ set INNO_TEMP=%TEMP%\inno-setup-%VERSION%.iss
 copy /y "%INNO_SCRIPT%" "%INNO_TEMP%" >nul
 
 :: replace version placeholder in Inno script
-powershell -Command "(Get-Content '%INNO_TEMP%') -replace '#define MyAppVersion ".*"', '#define MyAppVersion "%VERSION%"' | Set-Content '%INNO_TEMP%'"
+powershell -Command "(Get-Content '%INNO_TEMP%') -replace '__THE_VERSION__', '%VERSION%' | Set-Content '%INNO_TEMP%'"
 
 :: run Inno Setup compiler
 echo Compiling Inno Setup installer...
@@ -166,7 +163,7 @@ if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
     echo Signing installer...
     echo !CERT_PASSWORD! > "%TEMP%\cert_pw_installer.txt"
 
-    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 /pwd "%TEMP%\cert_pw_installer.txt" "%OUTPUT_DIR%\%INSTALLER_NAME%"
+    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 /p 12345678 "%OUTPUT_DIR%\%INSTALLER_NAME%"
     if %ERRORLEVEL% neq 0 exit /b 1
     echo Installer signed successfully
 
