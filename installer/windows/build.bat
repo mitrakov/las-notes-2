@@ -104,7 +104,7 @@ if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
 
     :: Sign all DLLs and EXEs
     echo Signing DLL files...
-    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 /p 12345678 '*.exe' '*.dll'
+    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 '*.exe' '*.dll'
     if %ERRORLEVEL% neq 0 exit /b 1
 
     del /f /q "%TEMP%\cert_pw.txt" 2>nul
@@ -142,9 +142,9 @@ pushd "%WORK_DIR%\installer\windows"
 if not exist "Las Notes" mkdir "Las Notes"
 xcopy /v "%WORK_DIR%\%BUILD_PATH%" "Las Notes" /S >nul
 powershell -Command "(Get-Content 'inno-setup.iss') -replace '__THE_VERSION__', '%VERSION%' | Set-Content 'inno-setup-2.iss'"
-iscc  "inno-setup-2.iss" /O"%OUTPUT_DIR%" /F"lasnotes-windows-%VERSION%-setup"
+iscc  "inno-setup-2.iss" /O"." /F"lasnotes-windows-%VERSION%-setup"
 set ISCC_RESULT=%ERRORLEVEL%
-popd
+
 
 :: clean up temp file
 :: del /f /q "%INNO_TEMP%" 2>nul
@@ -156,8 +156,8 @@ if %ISCC_RESULT% neq 0 (
 
 :: verify installer was created
 set INSTALLER_NAME=lasnotes-windows-%VERSION%-setup.exe
-if not exist "%OUTPUT_DIR%\%INSTALLER_NAME%" (
-    echo Error: Installer not found at %OUTPUT_DIR%\%INSTALLER_NAME%
+if not exist "%INSTALLER_NAME%" (
+    echo Error: Installer not found: %INSTALLER_NAME%
     exit /b 1
 )
 
@@ -169,14 +169,16 @@ if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
     echo Signing installer...
     echo !CERT_PASSWORD! > "%TEMP%\cert_pw_installer.txt"
 
-    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 /p 12345678 "%OUTPUT_DIR%\%INSTALLER_NAME%"
+    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "%INSTALLER_NAME%"
     if %ERRORLEVEL% neq 0 exit /b 1
     echo Installer signed successfully
 
     del /f /q "%TEMP%\cert_pw_installer.txt" 2>nul
 )
 
-echo Installer created successfully: %OUTPUT_DIR%\%INSTALLER_NAME%
+echo Installer created successfully: %INSTALLER_NAME%
+move /y %INSTALLER_NAME% "%WORK_DIR%/dist" >nul
+popd
 
 :: finish
 call flutter clean
