@@ -50,11 +50,6 @@ for /f "tokens=1 delims=+" %%a in ("%fullVersion%") do (
 )
 echo Version: %VERSION%
 
-:: get certificate password if signing is available
-if "!SIGNTOOL_AVAILABLE!"=="1" (
-    set /p CERT_PASSWORD="Enter certificate password (leave empty to skip signing): "
-)
-
 :: modify db.dart file for Windows
 copy /y lib\model\db.dart lib\model\db.dart.bkp >nul
 powershell -Command "(Get-Content lib\model\db.dart) -replace 'password: password,', '' -replace 'sqflite_sqlcipher/sqflite.dart', 'sqflite_common_ffi/sqflite_ffi.dart' | Set-Content lib\model\db.dart"
@@ -69,6 +64,11 @@ if %ERRORLEVEL% neq 0 (
 
 :: restore original file
 move /y lib\model\db.dart.bkp lib\model\db.dart >nul
+
+pushd "%WORK_DIR%\%BUILD_PATH%"
+signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "*.exe" "*.dll"
+if %ERRORLEVEL% neq 0 exit /b 1
+popd
 
 :: copy SQLite library
 if not exist "sqlcipher\windows\sqlite3.dll" (
@@ -90,32 +90,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: ============================================
-:: CODE SIGNING - Sign all DLLs and EXEs
-:: ============================================
-if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
-    echo.
-    echo Signing executables and libraries...
 
-    pushd "%BUILD_PATH%"
-
-    :: Create password file for signtool (safer than command line)
-    echo !CERT_PASSWORD! > "%TEMP%\cert_pw.txt"
-
-    :: Sign all DLLs and EXEs
-    echo Signing DLL files...
-    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 '*.exe' '*.dll'
-    if %ERRORLEVEL% neq 0 exit /b 1
-
-    del /f /q "%TEMP%\cert_pw.txt" 2>nul
-
-    popd
-    echo Signing complete.
-) else (
-    if "!SIGNTOOL_AVAILABLE!"=="1" (
-        echo Skipping code signing: no password provided
-    )
-)
 
 :: create output directory
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
@@ -161,22 +136,9 @@ if not exist "%INSTALLER_NAME%" (
     exit /b 1
 )
 
-:: ============================================
-:: SIGN THE INSTALLER
-:: ============================================
-if "!SIGNTOOL_AVAILABLE!"=="1" if not "!CERT_PASSWORD!"=="" (
-    echo.
-    echo Signing installer...
-    echo !CERT_PASSWORD! > "%TEMP%\cert_pw_installer.txt"
+signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "%INSTALLER_NAME%"
+if %ERRORLEVEL% neq 0 exit /b 1
 
-    signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "%INSTALLER_NAME%"
-    if %ERRORLEVEL% neq 0 exit /b 1
-    echo Installer signed successfully
-
-    del /f /q "%TEMP%\cert_pw_installer.txt" 2>nul
-)
-
-echo Installer created successfully: %INSTALLER_NAME%
 move /y %INSTALLER_NAME% "%WORK_DIR%/dist" >nul
 del "inno-setup-2.iss" 2>nul
 rmdir /s /q "Las Notes"
