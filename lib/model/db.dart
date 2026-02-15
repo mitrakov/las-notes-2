@@ -39,7 +39,9 @@ class SQLiteDatabase {
               is_favourite BOOLEAN NOT NULL DEFAULT false,
               is_deleted BOOLEAN NOT NULL DEFAULT false,
               created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              attachment_name VARCHAR(128) NULL,
+              attachment BLOB NULL
             );"""
           );
           tx.execute("CREATE VIRTUAL TABLE IF NOT EXISTS notedata USING FTS5(data);");
