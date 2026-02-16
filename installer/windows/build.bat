@@ -102,11 +102,11 @@ if not exist "inno-setup.iss" (
 if not exist "Las Notes" mkdir "Las Notes"
 xcopy /v "%WORK_DIR%\%BUILD_PATH%" "Las Notes" /S
 powershell -Command "(Get-Content 'inno-setup.iss') -replace '__THE_VERSION__', '%VERSION%' | Set-Content 'inno-setup-tmp.iss'"
-iscc  "inno-setup-tmp.iss" /O"." /F"lasnotes-windows-%VERSION%-setup"
+iscc  "inno-setup-tmp.iss" /O"." /F"lasnotes-win64-%VERSION%"
 if %ERRORLEVEL% neq 0 exit /b 1
 
 :: verify installer was created
-set INSTALLER_NAME=lasnotes-windows-%VERSION%-setup.exe
+set INSTALLER_NAME=lasnotes-win64-%VERSION%.exe
 if not exist "%INSTALLER_NAME%" (
     echo Error: Installer not found: %INSTALLER_NAME%
     exit /b 1
@@ -118,6 +118,7 @@ if not exist "%INSTALLER_NAME%" (
 echo Signing the installer...
 signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "%INSTALLER_NAME%"
 if %ERRORLEVEL% neq 0 exit /b 1
+del "%WORK_DIR%/dist/lasnotes-win64-*.exe"
 move /y %INSTALLER_NAME% "%WORK_DIR%/dist"
 
 
