@@ -65,8 +65,12 @@ final class TheModel extends Model {
     // 1) on iOS/macOS, also update ios/Runner/Info.plist & macos/Runner/Info.plist
     // 2) since FilePicker v10.3.7, you must add to macos/Runner/DebugProfile.entitlements and Release.entitlements:
     // <key>com.apple.security.files.user-selected.read-write</key><true/>
-    final result = await FilePicker.platform
-        .pickFiles(dialogTitle: "Open a DB file", type: FileType.custom, allowedExtensions: ["db", "dbx"], lockParentWindow: true);
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: "Open a DB file",
+      type: Platform.isAndroid ? FileType.any : FileType.custom,    // TODO: For Android, need to register "db" and "dbx" mime-types
+      allowedExtensions: Platform.isAndroid ? null : ["db", "dbx"], // TODO: For Android, need to register "db" and "dbx" mime-types
+      lockParentWindow: true,
+    );
     final path = result?.files.firstOrNull?.path;
     if (path != null)
       openFile(context, path);
@@ -79,7 +83,7 @@ final class TheModel extends Model {
       fileName: encrypt ? "mydb.dbx" : "mydb.db",
       type: FileType.custom,
       allowedExtensions: encrypt ? ["dbx"] : ["db"],
-      lockParentWindow: true
+      lockParentWindow: true,
     );
     if (path != null) {
       final file = File(path);

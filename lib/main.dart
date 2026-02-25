@@ -46,8 +46,8 @@ Build for iOS:
 
 Build for Android:
   bump version in pubspec.yaml
-  flutter build android
-  AndroidStudio: Build -> Generate Signed Bundle -> APK -> choose android.jks -> Release
+  flutter build apk
+  AndroidStudio: Build -> Generate Signed App Bundle or APK -> APK -> choose android.jks -> release
   rename and move *.apk file to _dist
 
 Build for Windows:
