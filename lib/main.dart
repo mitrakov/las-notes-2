@@ -33,8 +33,8 @@ Build for MacOS:
   flutter build macos
   xCode: Product -> Destination -> Any Mac (arm64, x86_64)
   xCode: Product -> Archive -> Distribute App -> Direct Distribution -> wait for 30-40 sec for notarization service to complete
-  copy "Las Notes.app" to "_installer/macos/App"
-  run _installer/macos/build-dmg.sh
+  copy "*.app" to "installer/macos/App"
+  run installer/macos/build-dmg.sh
   move *.dmg image to dist/
 
 Build for iOS:
@@ -44,10 +44,18 @@ Build for iOS:
   xCode: Product -> Archive -> Distribute App -> Release Testing
   rename and move *.ipa file to dist/
 
+Build for Android:
+  bump version in pubspec.yaml
+  flutter build android
+  AndroidStudio: Build -> Generate Signed Bundle -> APK -> choose android.jks -> Release
+  rename and move *.apk file to _dist
+
 Build for Windows:
+  bump version in pubspec.yaml
   installer\windows\build.bat
 
 Build for Linux:
+  bump version in pubspec.yaml
   installer/linux/build.sh
 */
 void main() async {

@@ -38,7 +38,8 @@ dependency_overrides:
 flutter:
   uses-material-design: true
 
-flutter_launcher_icons:
+flutter_launcher_icons:       # dart run flutter_launcher_icons
+  android: "ic_launcher"
   ios: true
   image_path: "installer/macos/appicon.png"
   macos:
