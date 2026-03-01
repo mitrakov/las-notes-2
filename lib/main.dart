@@ -362,6 +362,13 @@ class _MainState extends State<Main> {
         PlatformMenu(
           label: "Edit",
           menus: [
+            PlatformMenuItemGroup(members: [
+              PlatformMenuItem(
+                label: "Edit first note",
+                onSelectedIntent: EditNoteIntent(),
+                shortcut: SingleActivator(LogicalKeyboardKey.keyE, meta: true),
+              ),
+            ]),
             PlatformMenuItem(
               label: " ᎒᎒᎒  Insert Table",
               onSelectedIntent: InsertTableIntent(),
@@ -413,6 +420,7 @@ class _MainState extends State<Main> {
           SingleActivator(LogicalKeyboardKey.keyO, meta: isMacOS, control: !isMacOS):              OpenDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyW, meta: isMacOS, control: !isMacOS):              CloseDbFileIntent(),
           SingleActivator(LogicalKeyboardKey.keyN, meta: isMacOS, control: !isMacOS):              NewNoteIntent(),
+          SingleActivator(LogicalKeyboardKey.keyE, meta: isMacOS, control: !isMacOS):              EditNoteIntent(),
           SingleActivator(LogicalKeyboardKey.keyS, meta: isMacOS, control: !isMacOS):              SaveNoteIntent(),
           SingleActivator(LogicalKeyboardKey.escape):                                              EscapeIntent(),
           SingleActivator(LogicalKeyboardKey.f1):                                                  AboutIntent(),
@@ -433,6 +441,7 @@ class _MainState extends State<Main> {
             OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(context)),
             CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "", null)),
+            EditNoteIntent:       CallbackAction(onInvoke: (_) => _editFirstNote()),
             SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
             EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
             AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
@@ -777,6 +786,12 @@ class _MainState extends State<Main> {
       FocusManager.instance.primaryFocus?.unfocus(); // hide keyboard on iOS/Android
   }
 
+  void _editFirstNote() {
+    final note = _notes.firstOrNull;
+    if (note != null)
+      _setEditMode(note.id, note.data, note.tags, note.attachment);
+  }
+
   void _closeFile() {
     final model = ScopedModel.of<TheModel>(context);
     if (fileChanged) {
@@ -859,6 +874,8 @@ class _MainState extends State<Main> {
         NativeMenuItem(label: "Quit                                 Ctrl+Q", onSelected: () => exit(0)),
       ]),
       NativeSubmenu(label: "Edit", children: [
+        NativeMenuItem(label: "Edit first note               Ctrl+E", onSelected: _editFirstNote),
+        const NativeMenuDivider(),
         NativeMenuItem(label: "᎒᎒᎒ Insert Table               Ctrl+Shift+T", onSelected:()=>Utils.insertText(_currentText, _tableStr)),
         NativeMenuItem(label: "🔗 Insert Link                Ctrl+Shift+L",
                                                                onSelected: () => Utils.insertText(_currentText, _linkStr, "https://"),
@@ -975,6 +992,7 @@ class OpenDbFileIntent     extends Intent {}
 class OpenWebDavFileIntent extends Intent {}
 class CloseDbFileIntent    extends Intent {}
 class NewNoteIntent        extends Intent {}
+class EditNoteIntent       extends Intent {}
 class SaveNoteIntent       extends Intent {}
 class EscapeIntent         extends Intent {}
 class GlobalSearchIntent   extends Intent {}
