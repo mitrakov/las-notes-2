@@ -153,12 +153,13 @@ class _MainState extends State<Main> {
         if (isDesktop)
           windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes");
       }
-      return isDesktop ? _buildForDesktop(context, model) : _buildForMobile(context, model);
+      return isDesktop ? _buildForDesktop() : _buildForMobile();
     });
   }
 
-  Widget _buildForMobile(BuildContext context, TheModel model) {
-    return Scaffold(
+  Widget _buildForMobile() {
+    final model = ScopedModel.of<TheModel>(context);
+    return model.currentPath == null ? WebDavView() : Scaffold(
       appBar: AppBar(
         title: const Text("Las Notes", style: TextStyle(fontWeight: .bold)),
         centerTitle: true,
@@ -169,9 +170,7 @@ class _MainState extends State<Main> {
           IconButton(onPressed: _showAboutDialog, icon: const Icon(Icons.info_outline)),
         ],
       ),
-      body: model.currentPath == null
-        ? Center(child: Text("Welcome to Las Notes", textAlign: .center, style: TextStyle(fontWeight: .bold, fontSize: 36)))
-        : Padding(padding: const .all(8.0), child: _makeMainAreaMobile(model)),
+      body: Padding(padding: const .all(8.0), child: _makeMainAreaMobile(model)),
       drawer: Drawer(
         child: Padding(
           padding: const .all(8.0),
@@ -213,7 +212,7 @@ class _MainState extends State<Main> {
                     },
                   ),
                 ).toList()));
-              else return const CircularProgressIndicator(color: Colors.lime);
+              return const CircularProgressIndicator(color: Colors.lime);
             })
           ]),
         ),
@@ -224,7 +223,7 @@ class _MainState extends State<Main> {
         children: [
           _webDavProgressIndicator(),
           Visibility(
-            visible: model.currentPath != null && _editorMode == .read,
+            visible: _editorMode == .read,
             child: Padding(
               padding: const .all(8.0),
               child: FloatingActionButton(
@@ -236,7 +235,19 @@ class _MainState extends State<Main> {
             ),
           ),
           Visibility(
-            visible: model.currentPath != null && _editorMode == .edit,
+            visible: _editorMode == .read,
+            child: Padding(
+              padding: const .all(8.0),
+              child: FloatingActionButton(
+                heroTag: "closeFile",
+                child: const Icon(Icons.stop_circle_outlined, size: 32),
+                backgroundColor: Colors.red[400],
+                onPressed: _closeFile,
+              ),
+            ),
+          ),
+          Visibility(
+            visible: _editorMode == .edit,
             child: Padding(
               padding: const .all(8.0),
               child: FloatingActionButton(
@@ -248,7 +259,7 @@ class _MainState extends State<Main> {
             ),
           ),
           Visibility(
-            visible: model.currentPath != null && _editorMode == .edit,
+            visible: _editorMode == .edit,
             child: Padding(
               padding: const .all(8.0),
               child: FloatingActionButton(
@@ -259,48 +270,13 @@ class _MainState extends State<Main> {
               ),
             ),
           ),
-          Visibility(
-            visible: model.currentPath == null,
-            child: Padding(
-              padding: const .all(8.0),
-              child: FloatingActionButton(
-                heroTag: "openFile",
-                child: const Icon(Icons.download, size: 28),
-                backgroundColor: Colors.brown[400],
-                onPressed: () => model.openFileWithDialog(context),
-              ),
-            ),
-          ),
-          Visibility(
-            visible: model.currentPath == null,
-            child: Padding(
-              padding: const .all(8.0),
-              child: FloatingActionButton(
-                heroTag: "openWebDav",
-                child: const Icon(Icons.cloud_download_outlined, size: 36),
-                backgroundColor: Colors.blue[300],
-                onPressed: _showWebDavDialogMobile,
-              ),
-            ),
-          ),
-          Visibility(
-            visible: model.currentPath != null && _editorMode == .read,
-            child: Padding(
-              padding: const .all(8.0),
-              child: FloatingActionButton(
-                heroTag: "closeFile",
-                child: const Icon(Icons.stop_circle_outlined, size: 32),
-                backgroundColor: Colors.red[400],
-                onPressed: _closeFile,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildForDesktop(BuildContext context, TheModel model) {
+  Widget _buildForDesktop() {
+    final model = ScopedModel.of<TheModel>(context);
     final isMacOS = Platform.isMacOS;
     return PlatformMenuBar(
       // This menu is only for MacOS. For Windows/Linux see: _createMenuWindowsLinux().
@@ -810,30 +786,16 @@ class _MainState extends State<Main> {
   }
 
   void _showWebDavDialogDesktop() {
-    final model = ScopedModel.of<TheModel>(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: .circular(20)),
           backgroundColor: Theme.of(context).colorScheme.surface,
-          content: SizedBox(width: 400, child: WebDavView(model.webDav, (path) => _webDavOpenPath(context, path))),
+          content: SizedBox(width: 400, child: WebDavView()),
         );
       },
     );
-  }
-
-  void _showWebDavDialogMobile() {
-    final model = ScopedModel.of<TheModel>(context);
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => WebDavView(model.webDav, (path) => _webDavOpenPath(context, path)),
-    ));
-  }
-
-  void _webDavOpenPath(BuildContext context, String path) {
-    final model = ScopedModel.of<TheModel>(context);
-    Navigator.of(context).pop(); // should be first, for ".dbx" files to ask a password
-    model.openFile(context, path);
   }
 
   void _shareFile() async {

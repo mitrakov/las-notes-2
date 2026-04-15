@@ -1,20 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:markdown_widget/config/all.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' show dirname, extension;
 import 'package:path_provider/path_provider.dart';
+import 'package:scoped_model/scoped_model.dart';
 import 'package:webdav_client/webdav_client.dart' as wd;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lasnotes/main.dart';
+import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/utils.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 
 class WebDavView extends StatefulWidget {
-  final WebDavController controller;
-  final ValueCallback<String> onNewPath;
-  const WebDavView(this.controller, this.onNewPath);
-
-  @override
   State<WebDavView> createState() => _WebDavViewState();
 }
 
@@ -31,23 +28,17 @@ class _WebDavViewState extends State<WebDavView> {
   @override
   void initState() {
     super.initState();
-    getTemporaryDirectory().then((v) { _tempDir = v.path; });
+    getTemporaryDirectory().then((v) { _tempDir = v.path; }).then((_) => _connect());
   }
 
   @override
   Widget build(BuildContext context) {
+    final model = ScopedModel.of<TheModel>(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text("WebDAV Connection"),
-        leading: Visibility(
-          visible: Platform.isIOS || Platform.isAndroid,
-          child: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.of(context).pop()),
-        ),
+        title: const Text("Las Notes (WebDAV)", style: TextStyle(fontWeight: .bold)),
         actions: [
-          Visibility(
-            visible: Platform.isMacOS || Platform.isWindows || Platform.isLinux,
-            child: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
-          )
+          Visibility(visible: isDesktop, child: IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.of(context).pop()))
         ],
       ),
       body: SingleChildScrollView(
@@ -70,7 +61,14 @@ class _WebDavViewState extends State<WebDavView> {
               labelText: "Password",
               hintText: "Your App password (not primary password)",
             )),
-            FilledButton(child: const Text("Connect"), onPressed: _connect),
+            Row(
+              mainAxisAlignment: .center,
+              spacing: 20,
+              children: [
+                FilledButton(child: const Text("Connect WebDAV"), onPressed: _connect),
+                FilledButton(child: const Text("Open local file"), onPressed: () => model.openFileWithDialog(context)),
+              ],
+            ),
             Container(height: 1, color: Colors.grey),
             Visibility(
               visible: _client != null,
@@ -96,7 +94,7 @@ class _WebDavViewState extends State<WebDavView> {
     final isRoot = _pwd == "/";                        // if root, then no need to display ".." (Back) button
     return ListView.builder(
       shrinkWrap: true,                                // necessary for constraints
-      physics: const NeverScrollableScrollPhysics(),   // smooth scrolling (TODO: Guap?)
+      physics: const NeverScrollableScrollPhysics(),   // smooth scrolling
       itemCount: list.length + (isRoot ? 0 : 1),       // ".." ++ items
       itemBuilder: (context, index) {
         // first element is ".." (go to parent dir)
@@ -128,9 +126,7 @@ class _WebDavViewState extends State<WebDavView> {
           child: TrixContainer(child: ListTile(
             dense: true,
             visualDensity: VisualDensity.compact,
-            leading: FaIcon(isDir ? FontAwesomeIcons.solidFolder : isDb
-              ? FontAwesomeIcons.database
-              : FontAwesomeIcons.question,
+            leading: FaIcon(isDir ? FontAwesomeIcons.solidFolder : isDb ? FontAwesomeIcons.database : FontAwesomeIcons.question,
             color: isDir ? Colors.brown : isDb ? ext == ".db" ? Colors.blue : Colors.orange : Colors.grey),
             title: Text("${isDir ? "/" : ""}$name", style: TextStyle(fontWeight: isDir ? .bold : .normal)),
             subtitle: Text(file.mTime.toString().substring(0, 19)), // remove ".000" (milliseconds)
@@ -142,7 +138,7 @@ class _WebDavViewState extends State<WebDavView> {
                 });
               } else if (isDb) {
                 Settings.local.setWebdavInitDir(_pwd);
-                widget.onNewPath(await _download(path));
+                ScopedModel.of<TheModel>(context).openFile(context, await _download(path));
               }
             },
           )),
@@ -162,7 +158,7 @@ class _WebDavViewState extends State<WebDavView> {
         _client = wd.newClient(uri, user: login, password: pass);
         _client!.c.options.contentType = "application/octet-stream"; // Bug: https://github.com/flymzero/webdav_client/issues/25
         _futureFiles = _client!.readDir(_pwd);
-        widget.controller._init(_client!, _tempDir);
+        ScopedModel.of<TheModel>(context).webDav._init(_client!, _tempDir);
         Settings.local.setWebdavConnection(uri, login, pass);
       });
     } catch (e) {
