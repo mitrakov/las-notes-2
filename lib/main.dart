@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ffi' show DynamicLibrary;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' show basename, extension;
 import 'package:share_plus/share_plus.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -60,6 +62,7 @@ Build for Linux:
   installer/linux/build.sh
 */
 void main() async {
+  // 1. Sharing-Intent plugin needs extra iOS/Android setup! See https://pub.dev/packages/receive_sharing_intent
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
   
   // Enable SQLite/SQLCipher support for Windows/Linux:
@@ -126,6 +129,7 @@ class _MainState extends State<Main> {
   Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
   var _back = TrixStack<Search>();              // ⬅️ stack history
   var _forward = TrixStack<Search>();           // ➡️ stack history
+  StreamSubscription<List<SharedMediaFile>>? sharedFilesSub; // subscription to shared files from other apps
 
   // Simple getters/setters
   String get _nowStr => "${DateTime.now().toString().substring(0, 19)} ";
@@ -141,6 +145,8 @@ class _MainState extends State<Main> {
     _currentText.addListener(() { setState(() {}); });
     if (isWinLinux)
       _createMenuWindowsLinux();
+    if (!isDesktop)
+      _addSharedFilesListener();
   }
 
   @override
@@ -884,6 +890,18 @@ class _MainState extends State<Main> {
     }
   }
 
+  void _addSharedFilesListener() {
+    // also we can do "ReceiveSharingIntent.instance.getInitialMedia()" (get shared files when the app was closed), but in our case
+    // no DB file would be chosen, so we'll always go to "else"; => let's fix it in the future
+
+    sharedFilesSub = ReceiveSharingIntent.instance.getMediaStream().where((t) => t.isNotEmpty).listen((files) {
+      print("Shared files received: ${files.map((t) => t.toMap())}");
+      if (_currentPath != null)
+        _setEditMode(null, files.first.path, "!SHARED", null);
+      else Utils.showAlert("No DB file chosen", "To share content with Las Notes, first open a target DB File", .information, .ok);
+    });
+  }
+
   /// ALL state changes MUST be done in _setEditMode() and _setReadMode(). Keep these methods at the end of the class
   void _setEditMode(int? noteId, String text, String tags, Attachment? attachment) {
     setState(() {
@@ -934,6 +952,7 @@ class _MainState extends State<Main> {
     _focusNodeText.dispose();
     _focusNodeTags.dispose();
     _focusNodeSearch.dispose();
+    sharedFilesSub?.cancel();
     super.dispose();
   }
 }
