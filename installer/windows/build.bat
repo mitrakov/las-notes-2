@@ -71,7 +71,7 @@ if not exist "%BUILD_PATH%" (
     exit /b 1
 )
 pushd "%WORK_DIR%\%BUILD_PATH%"
-signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "*.exe" "*.dll"
+:: signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "*.exe" "*.dll"
 if %ERRORLEVEL% neq 0 exit /b 1
 popd
 
@@ -116,7 +116,7 @@ if not exist "%INSTALLER_NAME%" (
 
 :: sign the installer itself
 echo Signing the installer...
-signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "%INSTALLER_NAME%"
+:: signtool sign /v /a /tr "http://timestamp.globalsign.com/tsa/r6advanced1" /td SHA256 /fd SHA256 "%INSTALLER_NAME%"
 if %ERRORLEVEL% neq 0 exit /b 1
 del "%WORK_DIR%/dist/lasnotes-win64-*.exe"
 move /y %INSTALLER_NAME% "%WORK_DIR%/dist"
