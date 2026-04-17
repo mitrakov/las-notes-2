@@ -22,7 +22,7 @@ final class TheModel extends Model {
   WebDavController get webDav => _webDav;
   Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
-  Future<bool> openFile(BuildContext? context, String path, {String? removeMe}) async {
+  Future<bool> openFile(BuildContext? context, String path, {String? passwd, String? removeMe}) async {
     if (File(path).existsSync()) {
       final ext = extension(path);
       switch (ext) {
@@ -31,7 +31,11 @@ final class TheModel extends Model {
           await _db.openDb(path);
           break;
         case ".dbx":                             // encrypted
-          final password = removeMe ?? await showInputBox(context, "Enter password", hint: "Password");
+          if (context == null && passwd == null) {
+            print("Password required");
+            return false;
+          }
+          final password = passwd ?? removeMe ?? await showInputBox(context!, "Enter password", hint: "Password");
           if (password == null) return false;
           if (context != null) print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
           try {
@@ -40,11 +44,11 @@ final class TheModel extends Model {
             // note that messages differ on iOS/MacOS and Windows
             if (e.toString().contains("file is not a database") || e.toString().startsWith("DatabaseException(open_failed")) {
               const msg = "Cannot open encrypted DB file. Wrong password?";
-              Utils.showAlert("Error", msg, .error, .ok);
+              Utils.showAlert("Error", msg, .error, .ok); // TODO: remove UI from model
             } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
               // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, rm recursion
-              openFile(context, path, removeMe: password);
-            } else Utils.showAlert("Error", e.toString(), .error, .ok);
+              openFile(context, path, passwd: passwd, removeMe: password);
+            } else Utils.showAlert("Error", e.toString(), .error, .ok); // TODO: remove UI from model
             return true;
           }
           break;
@@ -58,7 +62,7 @@ final class TheModel extends Model {
       Settings.local.addToRecentFiles(path);
       return true;
     } else {
-      Utils.showAlert("Error", "File not found:\n$path", .error, .ok);
+      Utils.showAlert("Error", "File not found:\n$path", .error, .ok); // TODO: remove UI from model
       Settings.local.removeFromRecentFiles(path);
       return false;
     }
@@ -104,7 +108,7 @@ final class TheModel extends Model {
           break;
         case ".dbx":                             // encrypted
           const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
-          await Utils.showAlert("DB encryption", msg, .exclamation, .ok);
+          await Utils.showAlert("DB encryption", msg, .exclamation, .ok); // TODO: remove UI from model
           final password = await showInputBox(context, "Enter password", hint: "Password");
           if (password == null) return;
           print("Creating encrypted DB file $path");
@@ -146,7 +150,7 @@ final class TheModel extends Model {
   }
 
   Future<bool> archiveNoteById(int noteId, {bool bypassAlert = false}) {
-    if (bypassAlert) return _db.softDeleteNote(noteId, true).then((_) => true);
+    if (bypassAlert) return _db.softDeleteNote(noteId, true).then((_) => true); // TODO: remove UI from model
 
     return Utils.showAlert("Archive note", "Are you sure you want to archive this note?", .question, .yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
@@ -161,7 +165,7 @@ final class TheModel extends Model {
     if (bypassAlert) return _db.deleteNote(noteId).then((_) => true);
 
     const text = "Are you sure you want to delete this note? It cannot be undone";
-    return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async {
+    return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async { // TODO: remove UI from model
       await _db.deleteNote(noteId);
     });
   }
@@ -172,7 +176,7 @@ final class TheModel extends Model {
     if (!_db.isConnected()) return null;
     if (data.trim().isEmpty) return null;
     if (tags.isEmpty) {
-      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", .asterisk, .ok);
+      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", .asterisk, .ok); // TODO: remove UI from model
       return null;
     }
 
@@ -180,13 +184,13 @@ final class TheModel extends Model {
       // UPDATE
       await _db.updateNote(noteId, data, attachment);
       await _updateTags(noteId, newTags, oldTags);
-      Utils.showAlert("Done", "Note updated", .information, .ok);
+      Utils.showAlert("Done", "Note updated", .information, .ok); // TODO: remove UI from model
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data, attachment);
       await _db.linkTagsToNote(newNoteId, tags);
-      Utils.showAlert("Done", "Note added", .information, .ok);
+      Utils.showAlert("Done", "Note added", .information, .ok); // TODO: remove UI from model
       return newNoteId;
     }
   }
@@ -205,6 +209,6 @@ final class TheModel extends Model {
 
   void _showExtensionError(String ext) {
     final msg = "File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)";
-    Utils.showAlert("Error", msg, .error, .ok);
+    Utils.showAlert("Error", msg, .error, .ok); // TODO: remove UI from model
   }
 }

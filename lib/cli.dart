@@ -12,11 +12,20 @@ class Cli {
   Cli(this.model);
 
   Future<String> processCLI(List<String> args) async {
-    parser.addCommand('search')..addOption('id')..addOption('tag')..addOption('keyword')..addOption('db', mandatory: true);
-    parser.addCommand('save')..addOption('id')..addOption('data', mandatory: true)..addOption('tags', mandatory: true)
+    parser.addCommand('search')
+      ..addOption('id')
+      ..addOption('tag')
+      ..addOption('keyword')
+      ..addOption('password')
+      ..addOption('db', mandatory: true);
+    parser.addCommand('save')
+      ..addOption('id') // optional for INSERT/UPDATE
+      ..addOption('data', mandatory: true)
+      ..addOption('tags', mandatory: true)
+      ..addOption('password')
       ..addOption('db', mandatory: true);
     for (final cmd in ['delete', 'archive', 'restore'])
-      parser.addCommand(cmd)..addOption('id', mandatory: true)..addOption('db', mandatory: true);
+      parser.addCommand(cmd)..addOption('id', mandatory: true)..addOption('password')..addOption('db', mandatory: true);
     parser.addCommand('help');
 
     try {
@@ -26,7 +35,7 @@ class Cli {
 
       if (cmd.name == "help") return _help();
 
-      if (!await model.openFile(null, cmd['db']))
+      if (!await model.openFile(null, cmd['db'], passwd: cmd['password']))
         return jsonEncode({"status": "error", "message": "Cannot open file: ${cmd['db']}"});
 
       dynamic output;
@@ -82,6 +91,8 @@ class Cli {
     lasnotes restore --id 55        --db /path/to/file.db 2>/dev/null
     lasnotes save --data 'data' --tags 'tag1,tag2'         --db /path/to/file.db 2>/dev/null
     lasnotes save --data 'data' --tags 'tag1,tag2' --id 55 --db /path/to/file.db 2>/dev/null
+    
+    * --password       provides password for *.dbx files
     """;
   }
 }
