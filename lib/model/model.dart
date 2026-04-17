@@ -22,18 +22,18 @@ final class TheModel extends Model {
   WebDavController get webDav => _webDav;
   Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
-  void openFile(BuildContext context, String path, {String? removeMe}) async {
+  Future<bool> openFile(BuildContext? context, String path, {String? removeMe}) async {
     if (File(path).existsSync()) {
       final ext = extension(path);
       switch (ext) {
         case ".db":                              // regular
-          print("Opening regular DB file $path");
+          if (context != null) print("Opening regular DB file $path"); // don't print message in CLI mode
           await _db.openDb(path);
           break;
         case ".dbx":                             // encrypted
           final password = removeMe ?? await showInputBox(context, "Enter password", hint: "Password");
-          if (password == null) return;
-          print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
+          if (password == null) return false;
+          if (context != null) print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
           try {
             await _db.openDb(path, password: password);
           } catch (e) {
@@ -45,23 +45,26 @@ final class TheModel extends Model {
               // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, rm recursion
               openFile(context, path, removeMe: password);
             } else Utils.showAlert("Error", e.toString(), .error, .ok);
-            return;
+            return true;
           }
           break;
         default:
-          return _showExtensionError(ext);
+          _showExtensionError(ext);
+          return false;
       }
 
       _currentPath = path;
       notifyListeners();
       Settings.local.addToRecentFiles(path);
+      return true;
     } else {
       Utils.showAlert("Error", "File not found:\n$path", .error, .ok);
       Settings.local.removeFromRecentFiles(path);
+      return false;
     }
   }
 
-  void openFileWithDialog(BuildContext context) async {
+  Future<void> openFileWithDialog(BuildContext context) async {
     // 1) on iOS/macOS, also update ios/Runner/Info.plist & macos/Runner/Info.plist
     // 2) since FilePicker v10.3.7, you must add to macos/Runner/DebugProfile.entitlements and Release.entitlements:
     // <key>com.apple.security.files.user-selected.read-write</key><true/>
@@ -76,7 +79,7 @@ final class TheModel extends Model {
       openFile(context, path);
   }
 
-  void newFile(BuildContext context, {bool? encrypted}) async {
+  Future<void> newFile(BuildContext context, {bool? encrypted}) async {
     final encrypt = encrypted ?? false;
     final path = await FilePicker.platform.saveFile(
       dialogTitle: encrypt ? "Create a new encrypted DB file" : "Create a new DB file",
@@ -117,7 +120,7 @@ final class TheModel extends Model {
     }
   }
 
-  void closeFile() async {
+  Future<void> closeFile() async {
     await _db.closeDb();
     _webDav.close();
     _currentPath = null;
@@ -142,7 +145,9 @@ final class TheModel extends Model {
     return _db.searchByKeyword(word, showArchive);
   }
 
-  Future<bool> archiveNoteById(int noteId) {
+  Future<bool> archiveNoteById(int noteId, {bool bypassAlert = false}) {
+    if (bypassAlert) return _db.softDeleteNote(noteId, true).then((_) => true);
+
     return Utils.showAlert("Archive note", "Are you sure you want to archive this note?", .question, .yesNo, onYes: () async {
       await _db.softDeleteNote(noteId, true);
     });
@@ -152,7 +157,9 @@ final class TheModel extends Model {
     return _db.softDeleteNote(noteId, false);
   }
 
-  Future<bool> deleteNoteById(int noteId) {
+  Future<bool> deleteNoteById(int noteId, {bool bypassAlert = false}) {
+    if (bypassAlert) return _db.deleteNote(noteId).then((_) => true);
+
     const text = "Are you sure you want to delete this note? It cannot be undone";
     return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async {
       await _db.deleteNote(noteId);

@@ -1,7 +1,7 @@
 # built with Flutter 3.38.5, Dart 3.10.4, CocoaPods 1.16.2, VStudio 2022, Android Studio 2025.2.3
 name: lasnotes
 description: "Las Notes: offline markdown editor for iOS, MacOS, Windows and Linux"
-version: 2.5.6+32
+version: 2.5.7+33
 
 environment:
   sdk: '>=3.10.3 <4.0.0'
@@ -24,6 +24,7 @@ dependencies:
   url_launcher_linux: 3.2.2        # TMP: override version of markdown_widget, https://github.com/asjqkkkk/markdown_widget/issues/243
   webdav_client: 1.2.2             # webdav client
   font_awesome_flutter: 10.12.0    # extra icons
+  args: 2.7.0                      # cmd line arguments parsing
   menubar: # native menu bar for Windows/Linux; should be removed once Flutter PlatformMenuBar supports Windows/Linux
     git:
       url: https://github.com/google/flutter-desktop-embedding.git

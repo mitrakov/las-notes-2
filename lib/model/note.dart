@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 class Note {
@@ -8,6 +9,9 @@ class Note {
   final bool isDeleted;
 
   Note(this.id, this.data, this.tags, this.attachment, this.isDeleted);
+
+  Map<String, dynamic> toMap() => {"id": id, "tags": tags, "isDeleted": isDeleted, "data": data,
+    if (attachment != null) "attachment" : attachment!.toMap()};
 }
 
 class Attachment {
@@ -15,4 +19,6 @@ class Attachment {
   final Uint8List data;
 
   Attachment(this.name, this.data);
+
+  Map<String, dynamic> toMap() => {"name": name, "data": base64Encode(data)};
 }

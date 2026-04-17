@@ -15,6 +15,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
 import 'package:sqlite3/open.dart' show open;
+import 'package:lasnotes/cli.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
@@ -61,10 +62,11 @@ Build for Linux:
   bump version in pubspec.yaml
   installer/linux/build.sh
 */
-void main() async {
+void main(List<String> args) async {
   // 1. Sharing-Intent plugin needs extra iOS/Android setup! See https://pub.dev/packages/receive_sharing_intent
   WidgetsFlutterBinding.ensureInitialized(); // allow async code in main()
-  
+  await Settings.init(); // must have
+
   // Enable SQLite/SQLCipher support for Windows/Linux:
   // 1. https://stackoverflow.com/q/76158800         // enable FFI support for Windows/Linux
   // 2. pub dev: sqlite3_flutter_libs                // (deprecated) add DLLs for Windows/Linux
@@ -75,10 +77,14 @@ void main() async {
     sqf.databaseFactory = sqf.createDatabaseFactoryFfi(ffiInit: () => open.overrideForAll(() => DynamicLibrary.open(libName)));
   }
 
+  final model = TheModel();
+  if (args.isNotEmpty) {
+    stdout.write(await Cli(model).processCLI(args));
+    exit(0);
+  }
+
   if (isDesktop)
     await WindowManager.instance.ensureInitialized(); // must have
-  await Settings.init(); // must have
-  final model = TheModel();
 
   runApp(ScopedModel(model: model, child: LaApp(model)));
 }

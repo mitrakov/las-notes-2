@@ -1,7 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-Future<String?> showInputBox(BuildContext context, String title, {String? hint, String? initialText}) async {
+Future<String?> showInputBox(BuildContext? context, String title, {String? hint, String? initialText}) async {
+  if (context == null) {
+    print(title);
+    return stdin.readLineSync();
+  }
+
   final ctrl = TextEditingController(text: initialText);
   final result = await showDialog<String>(
     context: context,
