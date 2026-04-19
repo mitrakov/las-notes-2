@@ -1,12 +1,11 @@
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:lasnotes/model/db.dart';
 import 'package:lasnotes/model/note.dart';
 import 'package:lasnotes/model/settings.dart';
-import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:lasnotes/widgets/webdavview.dart';
 import 'package:lasnotes/utils.dart';
 import 'package:path/path.dart' show extension;
@@ -22,38 +21,32 @@ final class TheModel extends Model {
   WebDavController get webDav => _webDav;
   Future<void> setShowArchive(bool v) => Settings.local.setShowArchive(v);
 
-  Future<bool> openFile(BuildContext? context, String path, {String? passwd, String? removeMe}) async {
+  Future<bool> openFile
+      (String path, ValueSetter<String> onError, AsyncValueGetter<String?> askPasswd, {String? removeMe}) async {
     if (File(path).existsSync()) {
       final ext = extension(path);
       switch (ext) {
         case ".db":                              // regular
-          if (context != null) print("Opening regular DB file $path"); // don't print message in CLI mode
           await _db.openDb(path);
           break;
         case ".dbx":                             // encrypted
-          if (context == null && passwd == null) {
-            print("Password required");
-            return false;
-          }
-          final password = passwd ?? removeMe ?? await showInputBox(context!, "Enter password", hint: "Password");
+          final password = removeMe ?? await askPasswd();
           if (password == null) return false;
-          if (context != null) print("Opening encrypted DB file $path with password: ${password.replaceAll(RegExp(r'.'), '•')}.");
           try {
             await _db.openDb(path, password: password);
           } catch (e) {
             // note that messages differ on iOS/MacOS and Windows
-            if (e.toString().contains("file is not a database") || e.toString().startsWith("DatabaseException(open_failed")) {
-              const msg = "Cannot open encrypted DB file. Wrong password?";
-              Utils.showAlert("Error", msg, .error, .ok); // TODO: remove UI from model
-            } else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
+            if (e.toString().contains("file is not a database") || e.toString().startsWith("DatabaseException(open_failed"))
+              onError("Cannot open encrypted DB file. Wrong password?");
+            else if (e.toString().startsWith('DatabaseException(Error Domain=FMDatabase Code=7 "out of memory"')) {
               // BUG in sqflite_sqlcipher: https://github.com/davidmartos96/sqflite_sqlcipher/issues/115. Once fixed, rm recursion
-              openFile(context, path, passwd: passwd, removeMe: password);
-            } else Utils.showAlert("Error", e.toString(), .error, .ok); // TODO: remove UI from model
+              openFile(path, onError, askPasswd, removeMe: password);
+            } else onError(e.toString());
             return true;
           }
           break;
         default:
-          _showExtensionError(ext);
+          onError("File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)");
           return false;
       }
 
@@ -62,13 +55,13 @@ final class TheModel extends Model {
       Settings.local.addToRecentFiles(path);
       return true;
     } else {
-      Utils.showAlert("Error", "File not found:\n$path", .error, .ok); // TODO: remove UI from model
+      onError("File not found:\n$path");
       Settings.local.removeFromRecentFiles(path);
       return false;
     }
   }
 
-  Future<void> openFileWithDialog(BuildContext context) async {
+  Future<void> openFileWithDialog(ValueSetter<String> onError, AsyncValueGetter<String?> askPasswd) async {
     // 1) on iOS/macOS, also update ios/Runner/Info.plist & macos/Runner/Info.plist
     // 2) since FilePicker v10.3.7, you must add to macos/Runner/DebugProfile.entitlements and Release.entitlements:
     // <key>com.apple.security.files.user-selected.read-write</key><true/>
@@ -80,10 +73,11 @@ final class TheModel extends Model {
     );
     final path = result?.files.firstOrNull?.path;
     if (path != null)
-      openFile(context, path);
+      openFile(path, onError, askPasswd);
   }
 
-  Future<void> newFile(BuildContext context, {bool? encrypted}) async {
+  Future<void> newFile(AsyncCallback passwdWarning, AsyncValueGetter<String?> askPasswd, ValueSetter<String> onError,
+      {bool? encrypted}) async {
     final encrypt = encrypted ?? false;
     final path = await FilePicker.platform.saveFile(
       dialogTitle: encrypt ? "Create a new encrypted DB file" : "Create a new DB file",
@@ -103,19 +97,17 @@ final class TheModel extends Model {
       final ext = extension(path);
       switch (ext) {
         case ".db":                              // regular
-          print("Creating regular DB file $path");
           await _db.createDb(path);
           break;
         case ".dbx":                             // encrypted
-          const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
-          await Utils.showAlert("DB encryption", msg, .exclamation, .ok); // TODO: remove UI from model
-          final password = await showInputBox(context, "Enter password", hint: "Password");
+          await passwdWarning();
+          final password = await askPasswd();
           if (password == null) return;
-          print("Creating encrypted DB file $path");
           await _db.createDb(path, password: password);
           break;
         default:
-          return _showExtensionError(ext);
+          onError("File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)");
+          return;
       }
 
       _currentPath = path;
@@ -149,34 +141,20 @@ final class TheModel extends Model {
     return _db.searchByKeyword(word, showArchive);
   }
 
-  Future<bool> archiveNoteById(int noteId, {bool bypassAlert = false}) {
-    if (bypassAlert) return _db.softDeleteNote(noteId, true).then((_) => true); // TODO: remove UI from model
+  Future<void> archiveNoteById(int noteId) => _db.softDeleteNote(noteId, true);
 
-    return Utils.showAlert("Archive note", "Are you sure you want to archive this note?", .question, .yesNo, onYes: () async {
-      await _db.softDeleteNote(noteId, true);
-    });
-  }
+  Future<void> restoreNoteById(int noteId) => _db.softDeleteNote(noteId, false);
 
-  Future<void> restoreNoteById(int noteId) {
-    return _db.softDeleteNote(noteId, false);
-  }
+  Future<void> deleteNoteById(int noteId) => _db.deleteNote(noteId);
 
-  Future<bool> deleteNoteById(int noteId, {bool bypassAlert = false}) {
-    if (bypassAlert) return _db.deleteNote(noteId).then((_) => true);
-
-    const text = "Are you sure you want to delete this note? It cannot be undone";
-    return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async { // TODO: remove UI from model
-      await _db.deleteNote(noteId);
-    });
-  }
-
-  FutureOr<int?> saveNote(int? noteId, String data, String newTags, String oldTags, Attachment? attachment) async {
+  FutureOr<int?> saveNote
+      (int? noteId, String data, String newTags, String oldTags, Attachment? attachment, VoidCallback tagNeeded) async {
     final tags = Utils.split(newTags);
 
     if (!_db.isConnected()) return null;
     if (data.trim().isEmpty) return null;
     if (tags.isEmpty) {
-      Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", .asterisk, .ok); // TODO: remove UI from model
+      tagNeeded();
       return null;
     }
 
@@ -184,13 +162,11 @@ final class TheModel extends Model {
       // UPDATE
       await _db.updateNote(noteId, data, attachment);
       await _updateTags(noteId, newTags, oldTags);
-      Utils.showAlert("Done", "Note updated", .information, .ok); // TODO: remove UI from model
       return noteId;
     } else {
       // INSERT
       final newNoteId = await _db.insertNote(data, attachment);
       await _db.linkTagsToNote(newNoteId, tags);
-      Utils.showAlert("Done", "Note added", .information, .ok); // TODO: remove UI from model
       return newNoteId;
     }
   }
@@ -205,10 +181,5 @@ final class TheModel extends Model {
 
     await _db.unlinkTagsFromNote(noteId, rmTags);
     await _db.linkTagsToNote(noteId, addTags);
-  }
-
-  void _showExtensionError(String ext) {
-    final msg = "File extension not supported: $ext\n Supported types: *.db (Regular DB), *.dbx (Encrypted DB)";
-    Utils.showAlert("Error", msg, .error, .ok); // TODO: remove UI from model
   }
 }

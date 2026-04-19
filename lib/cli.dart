@@ -35,7 +35,7 @@ class Cli {
 
       if (cmd.name == "help") return _help();
 
-      if (!await model.openFile(null, cmd['db'], passwd: cmd['password']))
+      if (!await model.openFile(cmd['db'], print, () => cmd['password']))
         return jsonEncode({"status": "error", "message": "Cannot open file: ${cmd['db']}"});
 
       dynamic output;
@@ -47,17 +47,17 @@ class Cli {
         case 'save':
           final id = int.tryParse(cmd['id'] ?? "");
           final oldTags = (await model.searchById(id ?? -1))?.tags ?? "";
-          final newId = await model.saveNote(id, cmd['data'], cmd['tags'], oldTags, null);
+          final newId = await model.saveNote(id, cmd['data'], cmd['tags'], oldTags, null, (){});
           output = {"status": newId != null ? "ok" : "error", "id": newId};
           break;
         case 'delete':
           final id = int.parse(cmd['id']);
-          await model.deleteNoteById(id, bypassAlert: true);
+          await model.deleteNoteById(id);
           output = {"status": "ok", "id": id};
           break;
         case 'archive':
           final id = int.parse(cmd['id']);
-          await model.archiveNoteById(id, bypassAlert: true);
+          await model.archiveNoteById(id);
           output = {"status": "ok", "id": id};
           break;
         case 'restore':
@@ -83,14 +83,14 @@ class Cli {
 
   String _help() {
     return """Examples:
-    lasnotes search --id 55         --db /path/to/file.db 2>/dev/null
-    lasnotes search --tag Scala     --db /path/to/file.db 2>/dev/null
-    lasnotes search --keyword Scala --db /path/to/file.db 2>/dev/null
-    lasnotes delete  --id 55        --db /path/to/file.db 2>/dev/null
-    lasnotes archive --id 55        --db /path/to/file.db 2>/dev/null
-    lasnotes restore --id 55        --db /path/to/file.db 2>/dev/null
-    lasnotes save --data 'data' --tags 'tag1,tag2'         --db /path/to/file.db 2>/dev/null
-    lasnotes save --data 'data' --tags 'tag1,tag2' --id 55 --db /path/to/file.db 2>/dev/null
+    LasNotes search --id 55         --db /path/to/file.db 2>/dev/null
+    LasNotes search --tag Scala     --db /path/to/file.db 2>/dev/null
+    LasNotes search --keyword Scala --db /path/to/file.db 2>/dev/null
+    LasNotes delete  --id 55        --db /path/to/file.db 2>/dev/null
+    LasNotes archive --id 55        --db /path/to/file.db 2>/dev/null
+    LasNotes restore --id 55        --db /path/to/file.db 2>/dev/null
+    LasNotes save --data 'data' --tags 'tag1,tag2'         --db /path/to/file.db 2>/dev/null
+    LasNotes save --data 'data' --tags 'tag1,tag2' --id 55 --db /path/to/file.db 2>/dev/null
     
     * --password       provides password for *.dbx files
     """;
