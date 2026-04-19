@@ -135,7 +135,8 @@ class _MainState extends State<Main> {
   Future<void>? _webDavLoading;                 // when WebDAV enabled, shows progress indicator on save/delete/archive
   var _back = TrixStack<Search>();              // ⬅️ stack history
   var _forward = TrixStack<Search>();           // ➡️ stack history
-  StreamSubscription<List<SharedMediaFile>>? sharedFilesSub; // subscription to shared files from other apps
+  StreamSubscription<List<SharedMediaFile>>? _sharedFilesSub; // subscription to shared files from other apps
+  final List<SharedMediaFile> _sharedFilesBuffer = [];        // buffer to keep shared files until a user selects a DB file
 
   // Simple getters/setters
   String get _nowStr => "${DateTime.now().toString().substring(0, 19)} ";
@@ -165,6 +166,8 @@ class _MainState extends State<Main> {
         _setReadMode(Search("", .all));
         if (isDesktop)
           windowManager.setTitle(model.currentPath != null ? "Las Notes (${model.currentPath})" : "Las Notes");
+        if (_sharedFilesBuffer.isNotEmpty)
+          Future.delayed(Duration(seconds: 2), () => _setEditMode(null, _sharedFilesBuffer.first.path, "!SHARED", null));
       }
       return isDesktop ? _buildForDesktop() : _buildForMobile();
     });
@@ -896,16 +899,26 @@ class _MainState extends State<Main> {
     }
   }
 
-  void _addSharedFilesListener() {
-    // also we can do "ReceiveSharingIntent.instance.getInitialMedia()" (get shared files when the app was closed), but in our case
-    // no DB file would be chosen, so we'll always go to "else"; => let's fix it in the future
-
-    sharedFilesSub = ReceiveSharingIntent.instance.getMediaStream().where((t) => t.isNotEmpty).listen((files) {
+  void _addSharedFilesListener() async {
+    _sharedFilesSub = ReceiveSharingIntent.instance.getMediaStream().where((t) => t.isNotEmpty).listen((files) {
       print("Shared files received: ${files.map((t) => t.toMap())}");
-      if (_currentPath != null)
+      if (_currentPath != null) // file already opened
         _setEditMode(null, files.first.path, "!SHARED", null);
-      else Utils.showAlert("No DB file chosen", "To share content with Las Notes, first open a target DB File", .information, .ok);
+      else bufferSharedFiles(files);
     });
+    bufferSharedFiles(await ReceiveSharingIntent.instance.getInitialMedia());
+  }
+
+  /// Stores shared media files into a buffer, so that a user may select a DB file first
+  void bufferSharedFiles(List<SharedMediaFile> files) {
+    if (files.isNotEmpty) {
+      _sharedFilesBuffer..clear()..addAll(files);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Shared media found. Please choose a DB file..."),
+        backgroundColor: Colors.purpleAccent,
+        duration: Duration(seconds: 3),
+      ));
+    }
   }
 
   /// ALL state changes MUST be done in _setEditMode() and _setReadMode(). Keep these methods at the end of the class
@@ -958,7 +971,7 @@ class _MainState extends State<Main> {
     _focusNodeText.dispose();
     _focusNodeTags.dispose();
     _focusNodeSearch.dispose();
-    sharedFilesSub?.cancel();
+    _sharedFilesSub?.cancel();
     super.dispose();
   }
 }
