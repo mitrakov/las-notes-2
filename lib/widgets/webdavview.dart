@@ -1,15 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:path/path.dart' show dirname, extension;
 import 'package:path_provider/path_provider.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:webdav_client/webdav_client.dart' as wd;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lasnotes/main.dart';
+import 'package:lasnotes/ctrl.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
 import 'package:lasnotes/utils.dart';
+import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 
 class WebDavView extends StatefulWidget {
