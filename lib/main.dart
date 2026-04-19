@@ -1,16 +1,15 @@
 import 'dart:io';
 import 'dart:ffi' show DynamicLibrary;
 import 'package:flutter/material.dart';
+import 'package:lasnotes/helper.dart';
 import 'package:lasnotes/mainapp.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqf;
 import 'package:sqlite3/open.dart' show open;
 import 'package:lasnotes/cli.dart';
-import 'package:lasnotes/ctrl.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
-
 
 /*
 Build for MacOS:

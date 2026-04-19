@@ -1,28 +1,27 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
-import 'package:menubar/menubar.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' show basename, extension;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:menubar/menubar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lasnotes/ctrl.dart';
-import 'package:lasnotes/model/model.dart';
-import 'package:lasnotes/model/note.dart';
-import 'package:lasnotes/model/settings.dart';
-import 'package:lasnotes/trixstack.dart';
-import 'package:lasnotes/utils.dart';
-import 'package:lasnotes/widgets/collapsible.dart';
-import 'package:lasnotes/widgets/inputbox.dart';
-import 'package:lasnotes/widgets/trixcontainer.dart';
-import 'package:lasnotes/widgets/trixiconbutton.dart';
-import 'package:lasnotes/widgets/webdavview.dart';
 import 'package:native_context_menu/native_context_menu.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:lasnotes/helper.dart';
+import 'package:lasnotes/trixstack.dart';
+import 'package:lasnotes/utils.dart';
+import 'package:lasnotes/model/model.dart';
+import 'package:lasnotes/model/note.dart';
+import 'package:lasnotes/model/settings.dart';
+import 'package:lasnotes/widgets/collapsible.dart';
+import 'package:lasnotes/widgets/inputbox.dart';
+import 'package:lasnotes/widgets/trixcontainer.dart';
+import 'package:lasnotes/widgets/trixiconbutton.dart';
+import 'package:lasnotes/widgets/webdavview.dart';
 
 class MainApp extends StatefulWidget {
   @override State<MainApp> createState() => _MainState();
@@ -49,6 +48,7 @@ class _MainState extends State<MainApp> {
   final _focusNodeSearch = FocusNode();         // global search focus
 
   // Non-important state variables
+  late Helper h;                                // helper class
   String? _currentPath;                         // copy of Model.currentPath to catch "onCurrentPathChange" event
   final _globalSearch = TextEditingController();// text in "Global search" field; only for mobile app
   var _fileChanged = false;                     // for iOS, we need to warn user that the DB file may be lost
@@ -78,6 +78,7 @@ class _MainState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
+    h = Helper(context);
     return ScopedModelDescendant<TheModel>(builder: (context, child, model) {
       if (_currentPath != model.currentPath) { // new file opened
         _currentPath = model.currentPath;
@@ -95,7 +96,7 @@ class _MainState extends State<MainApp> {
 
   Widget _buildForMobile() {
     final model = ScopedModel.of<TheModel>(context);
-    return model.currentPath == null ? WebDavView() : Scaffold(
+    return model.currentPath == null ? WebDavView(h) : Scaffold(
       appBar: AppBar(
         title: const Text("Las Notes", style: TextStyle(fontWeight: .bold)),
         centerTitle: true,
@@ -103,7 +104,7 @@ class _MainState extends State<MainApp> {
           IconButton(onPressed: () => _history(_back, _forward), icon: const Icon(Icons.chevron_left)),
           IconButton(onPressed: () => _history(_forward, _back), icon: const Icon(Icons.chevron_right)),
           IconButton(onPressed: _shareFile, icon: const Icon(Icons.ios_share)),
-          IconButton(onPressed: _showAboutDialog, icon: const Icon(Icons.info_outline)),
+          IconButton(onPressed: h.showAboutDialog, icon: const Icon(Icons.info_outline)),
         ],
       ),
       body: Padding(padding: const .all(8.0), child: _makeMainAreaMobile(model)),
@@ -240,7 +241,7 @@ class _MainState extends State<MainApp> {
           label: "File",
           menus: [
             PlatformMenu(label: "Open Recent", menus: Settings.local.recentFiles.map((path) =>
-                PlatformMenuItem(label: path, onSelected: () => model.openFile(path, showError, askPassword)) // no shortcuts here
+                PlatformMenuItem(label: path, onSelected: () => model.openFile(path, h.showError, h.askPassword)) // no shortcuts here
             ).toList()),
             PlatformMenuItemGroup(members: [
               PlatformMenuItem(
@@ -342,21 +343,22 @@ class _MainState extends State<MainApp> {
         },
         child: Actions(
           actions: {
-            NewDbFileIntent:      CallbackAction(onInvoke: (_) => model.newFile(showDbxWarning, askPassword,showError)),
-            NewDbxFileIntent:     CallbackAction(onInvoke: (_) => model.newFile(showDbxWarning, askPassword,showError,encrypted:true)),
-            OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => _showWebDavDialogDesktop()),
+            NewDbFileIntent:      CallbackAction(onInvoke: (_) => model.newFile(h.showDbxWarning, h.askPassword, h.showError)),
+            NewDbxFileIntent:     CallbackAction(onInvoke: (_) =>
+                model.newFile(h.showDbxWarning, h.askPassword, h.showError, encrypted:true)),
+            OpenWebDavFileIntent: CallbackAction(onInvoke: (_) => h.showWebDavDialogDesktop),
             InsertTableIntent:    CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _tableStr)),
             InsertLinkIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _linkStr, "https://")),
             InsertDateIntent:     CallbackAction(onInvoke: (_) => Utils.insertText(_currentText, _nowStr)),
             InsertAttachment:     CallbackAction(onInvoke: (_) => _insertAttachment()),
             GlobalSearchIntent:   CallbackAction(onInvoke: (_) => _focusNodeSearch.requestFocus()),
-            OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(showError, askPassword)),
+            OpenDbFileIntent:     CallbackAction(onInvoke: (_) => model.openFileWithDialog(h.showError, h.askPassword)),
             CloseDbFileIntent:    CallbackAction(onInvoke: (_) => model.closeFile()),
             NewNoteIntent:        CallbackAction(onInvoke: (_) => _setEditMode(null, "", "", null)),
             EditNoteIntent:       CallbackAction(onInvoke: (_) => _editFirstNote()),
             SaveNoteIntent:       CallbackAction(onInvoke: (_) => _saveNote()),
             EscapeIntent:         CallbackAction(onInvoke: (_) => _setReadMode(_search)),
-            AboutIntent:          CallbackAction(onInvoke: (_) => _showAboutDialog()),
+            AboutIntent:          CallbackAction(onInvoke: (_) => h.showAboutDialog()),
             BackIntent:           CallbackAction(onInvoke: (_) => _history(_back, _forward)),
             ForwardIntent:        CallbackAction(onInvoke: (_) => _history(_forward, _back)),
             CloseAppIntent:       CallbackAction(onInvoke: (_) => exit(0)),
@@ -556,12 +558,12 @@ class _MainState extends State<MainApp> {
     showContextMenuBox(context, "Update note", Utils.firstLine(note.data), [
       TrixAction("Edit note", true, false, () => _setEditMode(note.id, note.data, note.tags, note.attachment)),
       TrixAction("Archive note", false, false, () async {
-        if (await archiveNoteById(note.id))
+        if (await h.archiveNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
       }),
       TrixAction("Delete note", false, true, () async {
-        if (await deleteNoteById(note.id))
+        if (await h.deleteNoteById(note.id))
           _webDavLoading = model.uploadWebDav();
         _setReadMode(_search);
       }),
@@ -584,12 +586,12 @@ class _MainState extends State<MainApp> {
             _setEditMode(note.id, note.data, note.tags, note.attachment);
             break;
           case archiveTitle:
-            if (await archiveNoteById(note.id))
+            if (await h.archiveNoteById(note.id))
               _webDavLoading = model.uploadWebDav();
             _setReadMode(_search);
             break;
           case deleteTitle:
-            if (await deleteNoteById(note.id))
+            if (await h.deleteNoteById(note.id))
               _webDavLoading = model.uploadWebDav();
             _setReadMode(_search);
             break;
@@ -638,28 +640,28 @@ class _MainState extends State<MainApp> {
                     child: FilledButton(
                       child: const Text("Open File"),
                       style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
-                      onPressed: () => model.openFileWithDialog(showError, askPassword),
+                      onPressed: () => model.openFileWithDialog(h.showError, h.askPassword),
                     ),
                   ),
                   Expanded(
                       child: FilledButton(
                         child: const Text("WebDAV"),
                         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
-                        onPressed: _showWebDavDialogDesktop,
+                        onPressed: h.showWebDavDialogDesktop,
                       )
                   ),
                   Expanded(
                     child: FilledButton(
                         child: const Text("New File"),
                         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
-                        onPressed: () => model.newFile(showDbxWarning, askPassword, showError)
+                        onPressed: () => model.newFile(h.showDbxWarning, h.askPassword, h.showError)
                     ),
                   ),
                   Expanded(
                     child: FilledButton(
                         child: const Text("New File (encrypted)", textAlign: .center),
                         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 60), alignment: .center),
-                        onPressed: () => model.newFile(showDbxWarning, askPassword, showError, encrypted: true)
+                        onPressed: () => model.newFile(h.showDbxWarning, h.askPassword, h.showError, encrypted: true)
                     ),
                   ),
                 ],
@@ -673,7 +675,7 @@ class _MainState extends State<MainApp> {
                     leading: FaIcon(FontAwesomeIcons.database, color: extension(path) == ".dbx" ? Colors.orange : Colors.blue, size:32),
                     title: Text(basename(path), style: TextStyle(fontWeight: .bold)),
                     subtitle: Text(path, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                    onTap: () => model.openFile(path, showError, askPassword),
+                    onTap: () => model.openFile(path, h.showError, h.askPassword),
                   ),
                 )).toList(),
               ),
@@ -688,7 +690,7 @@ class _MainState extends State<MainApp> {
 
     final model = ScopedModel.of<TheModel>(context);
     final newId =
-    await model.saveNote(_currentNoteId, _currentText.text, _currentTags.text, _oldTags, _currentAttachment, showTagWarning);
+    await model.saveNote(_currentNoteId, _currentText.text, _currentTags.text, _oldTags, _currentAttachment, h.showTagWarning);
     if (newId != null) {
       fileChanged = true; // for iOS, we need to warn user that the DB file may be lost
       _webDavLoading = model.uploadWebDav();
@@ -712,27 +714,6 @@ class _MainState extends State<MainApp> {
       const msg = "On iOS you have to share this file to external storage. Do you want to share?";
       Utils.showAlert(header, msg, .information, .yesNoCancel, onYes: _shareFile, onNo: model.closeFile);
     } else model.closeFile();
-  }
-
-  void _showAboutDialog() async {
-    final i = await PackageInfo.fromPlatform();
-    final text = "v${i.version} (build: ${i.buildNumber})\n\nCopyright © 2024-2026\nmitrakov-artem@yandex.ru\nAll rights reserved.";
-    if (Platform.isWindows) // bug in Windows: F1.keyUp event is swallowed by ModalDialog event loop => let's wait for 300 msec.
-      Future.delayed(Duration(milliseconds: 300), () => Utils.showAlert(i.appName, text, .information, .ok));
-    else Utils.showAlert(i.appName, text, .information, .ok);
-  }
-
-  void _showWebDavDialogDesktop() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: .circular(20)),
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          content: SizedBox(width: 400, child: WebDavView()),
-        );
-      },
-    );
   }
 
   void _shareFile() async {
@@ -761,15 +742,15 @@ class _MainState extends State<MainApp> {
     setApplicationMenu([
       NativeSubmenu(label: "File", children: [
         NativeSubmenu(label: "Open Recent", children: Settings.local.recentFiles.map((path) =>
-            NativeMenuItem(label: path, onSelected: () => model.openFile(path, showError, askPassword))
+            NativeMenuItem(label: path, onSelected: () => model.openFile(path, h.showError, h.askPassword))
         ).toList()),
         NativeMenuItem(label: "New DB File                    Ctrl+Shift+N", onSelected: () =>
-            model.newFile(showDbxWarning, askPassword, showError)),
+            model.newFile(h.showDbxWarning, h.askPassword, h.showError)),
         NativeMenuItem(label: "New DB File Encrypted  Ctrl+Shift+E",       onSelected: () =>
-            model.newFile(showDbxWarning, askPassword, showError, encrypted: true)),
+            model.newFile(h.showDbxWarning, h.askPassword, h.showError, encrypted: true)),
         NativeMenuItem(label: "Open...                             Ctrl+O",onSelected: () =>
-            model.openFileWithDialog(showError, askPassword)),
-        NativeMenuItem(label: "Open WebDAV...             Ctrl+Shift+O",   onSelected: () => _showWebDavDialogDesktop()),
+            model.openFileWithDialog(h.showError, h.askPassword)),
+        NativeMenuItem(label: "Open WebDAV...             Ctrl+Shift+O",   onSelected: h.showWebDavDialogDesktop),
         const NativeMenuDivider(),
         NativeMenuItem(label: "Close DB File                  Ctrl+W",     onSelected: model.closeFile),
         const NativeMenuDivider(),
@@ -790,7 +771,7 @@ class _MainState extends State<MainApp> {
         NativeMenuItem(label: "⇒ Forward    Ctrl+]",                       onSelected: () => _history(_forward, _back)),
       ]),
       NativeSubmenu(label: "Help", children: [
-        NativeMenuItem(label: "About Las Notes     F1",                    onSelected: _showAboutDialog),
+        NativeMenuItem(label: "About Las Notes     F1",                    onSelected: h.showAboutDialog),
       ])
     ]);
   }
@@ -821,28 +802,6 @@ class _MainState extends State<MainApp> {
         }
       }
     }
-  }
-
-  void showError(String msg) => Utils.showAlert("Error", msg, .error, .ok);
-  Future<String?> askPassword() => showInputBox(context, "Enter password", hint: "Password");
-  void showTagWarning() => Utils.showAlert("Tag needed", "Add at least 1 tag\n(e.g. Home or Work)", .asterisk, .ok);
-  Future<void> showDbxWarning() async {
-    const msg = "Please note your password!\nLater on, you cannot decrypt the DB file without it";
-    await Utils.showAlert("DB encryption", msg, .exclamation, .ok);
-  }
-
-  Future<bool> archiveNoteById(int noteId) {
-    const text = "Are you sure you want to archive this note?";
-    return Utils.showAlert("Archive note", text, .question, .yesNo, onYes: () async {
-      await ScopedModel.of<TheModel>(context).archiveNoteById(noteId);
-    });
-  }
-
-  Future<bool> deleteNoteById(int noteId, {bool bypassAlert = false}) {
-    const text = "Are you sure you want to delete this note? It cannot be undone";
-    return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async {
-      await ScopedModel.of<TheModel>(context).deleteNoteById(noteId);
-    });
   }
 
   void _addSharedFilesListener() async {

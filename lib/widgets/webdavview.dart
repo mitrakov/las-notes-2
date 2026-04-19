@@ -5,14 +5,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:webdav_client/webdav_client.dart' as wd;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lasnotes/ctrl.dart';
+import 'package:lasnotes/helper.dart';
+import 'package:lasnotes/utils.dart';
 import 'package:lasnotes/model/model.dart';
 import 'package:lasnotes/model/settings.dart';
-import 'package:lasnotes/utils.dart';
-import 'package:lasnotes/widgets/inputbox.dart';
 import 'package:lasnotes/widgets/trixcontainer.dart';
 
 class WebDavView extends StatefulWidget {
+  final Helper helper;
+  const WebDavView(this.helper);
   State<WebDavView> createState() => _WebDavViewState();
 }
 
@@ -35,6 +36,7 @@ class _WebDavViewState extends State<WebDavView> {
   @override
   Widget build(BuildContext context) {
     final model = ScopedModel.of<TheModel>(context);
+    final h = widget.helper;
     return Scaffold(
       appBar: AppBar(
         title: const Text("Las Notes (WebDAV)", style: TextStyle(fontWeight: .bold)),
@@ -67,7 +69,7 @@ class _WebDavViewState extends State<WebDavView> {
               spacing: 20,
               children: [
                 FilledButton(child: const Text("Connect WebDAV"), onPressed: _connect),
-                FilledButton(child: const Text("Open local file"), onPressed: () => model.openFileWithDialog(showError, askPassword)),
+                FilledButton(child: const Text("Open local file"),onPressed: ()=>model.openFileWithDialog(h.showError, h.askPassword)),
               ],
             ),
             Container(height: 1, color: Colors.grey),
@@ -92,6 +94,7 @@ class _WebDavViewState extends State<WebDavView> {
   }
 
   Widget _buildListView(BuildContext context, List<wd.File> list) {
+    final h = widget.helper;
     final isRoot = _pwd == "/";                        // if root, then no need to display ".." (Back) button
     return ListView.builder(
       shrinkWrap: true,                                // necessary for constraints
@@ -139,7 +142,9 @@ class _WebDavViewState extends State<WebDavView> {
                 });
               } else if (isDb) {
                 Settings.local.setWebdavInitDir(_pwd);
-                ScopedModel.of<TheModel>(context).openFile(await _download(path), showError, askPassword);
+                ScopedModel.of<TheModel>(context).openFile(await _download(path), h.showError, h.askPassword);
+                if (isDesktop)
+                  Navigator.of(context).pop();
               }
             },
           )),
@@ -177,9 +182,6 @@ class _WebDavViewState extends State<WebDavView> {
       return newPath;
     return Future.error("Cannot open file '$path' ($newPath)");
   }
-
-  void showError(String msg) => Utils.showAlert("Error", msg, .error, .ok);
-  Future<String?> askPassword() => showInputBox(context, "Enter password", hint: "Password");
 
   @override
   void dispose() {
