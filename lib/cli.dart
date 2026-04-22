@@ -83,14 +83,14 @@ class Cli {
 
   String _help() {
     return """Examples:
-    LasNotes search --id 55         --db /path/to/file.db 2>/dev/null
-    LasNotes search --tag Scala     --db /path/to/file.db 2>/dev/null
-    LasNotes search --keyword Scala --db /path/to/file.db 2>/dev/null
-    LasNotes delete  --id 55        --db /path/to/file.db 2>/dev/null
-    LasNotes archive --id 55        --db /path/to/file.db 2>/dev/null
-    LasNotes restore --id 55        --db /path/to/file.db 2>/dev/null
-    LasNotes save --data 'data' --tags 'tag1,tag2'         --db /path/to/file.db 2>/dev/null
-    LasNotes save --data 'data' --tags 'tag1,tag2' --id 55 --db /path/to/file.db 2>/dev/null
+    las_notes search --id 55         --db /path/to/file.db 2>/dev/null
+    las_notes search --tag Scala     --db /path/to/file.db 2>/dev/null
+    las_notes search --keyword Scala --db /path/to/file.db 2>/dev/null
+    las_notes delete  --id 55        --db /path/to/file.db 2>/dev/null
+    las_notes archive --id 55        --db /path/to/file.db 2>/dev/null
+    las_notes restore --id 55        --db /path/to/file.db 2>/dev/null
+    las_notes save --data 'data' --tags 'tag1,tag2'         --db /path/to/file.db 2>/dev/null
+    las_notes save --data 'data' --tags 'tag1,tag2' --id 55 --db /path/to/file.db 2>/dev/null
     
     * --password       provides password for *.dbx files
     """;
