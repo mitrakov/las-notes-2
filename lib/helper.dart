@@ -9,10 +9,7 @@ import 'package:scoped_model/scoped_model.dart';
 
 /// Helper class to relieve MainApp class
 class Helper {
-  final BuildContext context;
-  Helper(this.context);
-
-  void showWebDavDialogDesktop() {
+  void showWebDavDialogDesktop(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -24,7 +21,7 @@ class Helper {
       },
     );
   }
-  Future<String?> askPassword() => showInputBox(context, "Enter password", hint: "Password");
+  Future<String?> askPassword(BuildContext context) => showInputBox(context, "Enter password", hint: "Password");
 
   void showError(String msg) => Utils.showAlert("Error", msg, .error, .ok);
 
@@ -35,14 +32,14 @@ class Helper {
     await Utils.showAlert("DB encryption", msg, .exclamation, .ok);
   }
 
-  Future<bool> archiveNoteById(int noteId) {
+  Future<bool> archiveNoteById(BuildContext context, int noteId) {
     const text = "Are you sure you want to archive this note?";
     return Utils.showAlert("Archive note", text, .question, .yesNo, onYes: () async {
       await ScopedModel.of<TheModel>(context).archiveNoteById(noteId);
     });
   }
 
-  Future<bool> deleteNoteById(int noteId, {bool bypassAlert = false}) {
+  Future<bool> deleteNoteById(BuildContext context, int noteId) {
     const text = "Are you sure you want to delete this note? It cannot be undone";
     return Utils.showAlert("Delete note", text, .stop, .yesNo, onYes: () async {
       await ScopedModel.of<TheModel>(context).deleteNoteById(noteId);

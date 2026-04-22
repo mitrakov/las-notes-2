@@ -69,7 +69,8 @@ class _WebDavViewState extends State<WebDavView> {
               spacing: 20,
               children: [
                 FilledButton(child: const Text("Connect WebDAV"), onPressed: _connect),
-                FilledButton(child: const Text("Open local file"),onPressed: ()=>model.openFileWithDialog(h.showError, h.askPassword)),
+                FilledButton(child: const Text("Open local file"),onPressed: () =>
+                    model.openFileWithDialog(h.showError, () => h.askPassword(context))),
               ],
             ),
             Container(height: 1, color: Colors.grey),
@@ -142,7 +143,7 @@ class _WebDavViewState extends State<WebDavView> {
                 });
               } else if (isDb) {
                 Settings.local.setWebdavInitDir(_pwd);
-                ScopedModel.of<TheModel>(context).openFile(await _download(path), h.showError, h.askPassword);
+                ScopedModel.of<TheModel>(context).openFile(await _download(path), h.showError, () => h.askPassword(context));
                 if (isDesktop)
                   Navigator.of(context).pop();
               }
