@@ -759,7 +759,7 @@ class _MainState extends State<MainApp> {
       NativeSubmenu(label: "Edit", children: [
         NativeMenuItem(label: "Edit first note               Ctrl+E", onSelected: _editFirstNote),
         const NativeMenuDivider(),
-        NativeMenuItem(label: "᎒᎒᎒ Insert Table               Ctrl+Shift+T", onSelected:()=>Utils.insertText(_currentText, _tableStr)),
+        NativeMenuItem(label: "田 Insert Table               Ctrl+Shift+T", onSelected:()=>Utils.insertText(_currentText, _tableStr)),
         NativeMenuItem(label: "🔗 Insert Link                Ctrl+Shift+L",
           onSelected: () => Utils.insertText(_currentText, _linkStr, "https://"),
         ),
