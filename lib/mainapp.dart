@@ -282,7 +282,7 @@ class _MainState extends State<MainApp> {
               ),
             ]),
             PlatformMenuItem(
-              label: " ᎒᎒᎒  Insert Table",
+              label: "田 Insert Table",
               onSelectedIntent: InsertTableIntent(),
               shortcut: SingleActivator(LogicalKeyboardKey.keyT, meta: true, shift: true),
             ),
