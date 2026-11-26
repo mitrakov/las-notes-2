@@ -672,7 +672,7 @@ class _MainState extends State<MainApp> {
                 shrinkWrap: true,
                 children: Settings.local.recentFiles.map((path) => TrixContainer(
                   child: ListTile(
-                    leading: FaIcon(FontAwesomeIcons.database, color: extension(path) == ".dbx" ? Colors.orange : Colors.blue, size:32),
+                    leading: FaIcon(FontAwesomeIcons.database, color: extension(path)==".dbx" ? Colors.orange : Colors.blue, size:32),
                     title: Text(basename(path), style: TextStyle(fontWeight: .bold)),
                     subtitle: Text(path, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                     onTap: () => model.openFile(path, h.showError, () => h.askPassword(context)),

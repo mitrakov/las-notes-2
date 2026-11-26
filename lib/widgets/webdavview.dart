@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart' show Options, ResponseType;
 import 'package:path/path.dart' show dirname, extension;
 import 'package:path_provider/path_provider.dart';
 import 'package:scoped_model/scoped_model.dart';
@@ -134,7 +136,7 @@ class _WebDavViewState extends State<WebDavView> {
             leading: FaIcon(isDir ? FontAwesomeIcons.solidFolder : isDb ? FontAwesomeIcons.database : FontAwesomeIcons.question,
             color: isDir ? Colors.brown : isDb ? ext == ".db" ? Colors.blue : Colors.orange : Colors.grey),
             title: Text("${isDir ? "/" : ""}$name", style: TextStyle(fontWeight: isDir ? .bold : .normal)),
-            subtitle: Text(file.mTime.toString().substring(0, 19)), // remove ".000" (milliseconds)
+            subtitle: Text(file.mTime != null ? file.mTime.toString().substring(0, 19) : ""), // remove ".000" (milliseconds)
             onTap: () async {
               if (isDir) {
                 setState(() {
@@ -164,8 +166,9 @@ class _WebDavViewState extends State<WebDavView> {
       setState(() {
         _client = wd.newClient(uri, user: login, password: pass);
         _client!.c.options.contentType = "application/octet-stream"; // Bug: https://github.com/flymzero/webdav_client/issues/25
+        _client!.c.options.headers['Authorization'] = 'Basic ${base64Encode(utf8.encode('$login:$pass'))}'; // OwnCloud may return 401
         _futureFiles = _client!.readDir(_pwd);
-        ScopedModel.of<TheModel>(context).webDav._init(_client!, _tempDir);
+        ScopedModel.of<TheModel>(context).webDav._init(_client!, _tempDir, uri);
         Settings.local.setWebdavConnection(uri, login, pass);
       });
     } catch (e) {
@@ -178,10 +181,17 @@ class _WebDavViewState extends State<WebDavView> {
 
     final newPath = "${_tempDir}$path";                      // TODO check / on Windows
     print("WebDAV: downloading file '$path' to temp dir: $newPath");
-    await _client!.read2File(path, newPath);
-    if (File(newPath).existsSync())
-      return newPath;
-    return Future.error("Cannot open file '$path' ($newPath)");
+
+    await File(newPath).parent.create(recursive: true);      // create temp dir
+    
+    final response = await _client!.c.get("${_ctrlUri.text.trim()}$path", options: Options(responseType: ResponseType.bytes));
+    final bytes = response.data;
+    if (bytes.isNotEmpty) {
+      await File(newPath).writeAsBytes(bytes, flush: true);
+      if (File(newPath).existsSync())
+        return newPath;
+    }
+    return Future.error("Cannot open file '$path' ($newPath): $response");
   }
 
   @override
@@ -196,22 +206,27 @@ class _WebDavViewState extends State<WebDavView> {
 class WebDavController {
   wd.Client? _client;
   String _tempDir = "";
+  String _baseUri = "";   // opt for Yandex.Disk, needed for OwnCloud
 
   bool get isConnected => _client != null;
 
-  void _init(wd.Client client, String tempDir) {
+  void _init(wd.Client client, String tempDir, String baseUri) {
     _client = client;
     _tempDir = tempDir;
+    _baseUri = baseUri.trim();
   }
 
   Future<void> updateSafe(String? localPath) async {
     if (_client == null || localPath == null) return;
 
-    final wdPath = localPath.replaceAll(_tempDir, "");
-    print("WebDAV: uploading file to: $wdPath");
+    final url = '$_baseUri${localPath.replaceAll(_tempDir, "")}';
+
+    print("WebDAV: uploading file to: $url");
     final timer = Stopwatch()..start();
-    await _client?.writeFromFile(localPath, wdPath); // may be very slow (≈ 1 Mb/min)
-    print("WebDAV: uploading done: $wdPath (${timer.elapsed})");
+
+    await _client!.c.put(url, data: await File(localPath).readAsBytes(), options: Options(contentType: "application/octet-stream"));
+
+    print("WebDAV: uploading done: ${timer.elapsed}");
   }
 
   void close() {

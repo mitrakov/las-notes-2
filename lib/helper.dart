@@ -16,7 +16,7 @@ class Helper {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: .circular(20)),
           backgroundColor: Theme.of(context).colorScheme.surface,
-          content: SizedBox(width: 400, child: WebDavView(this)),
+          content: SizedBox(width: 550, child: WebDavView(this)),
         );
       },
     );

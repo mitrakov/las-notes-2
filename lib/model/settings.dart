@@ -46,7 +46,7 @@ class Settings {
   String get webdavUri => _preferences!.getString(_WEBDAV_URI) ?? "";
   String get webdavLogin => _preferences!.getString(_WEBDAV_LOGIN) ?? "";
   String get webdavPass => _preferences!.getString(_WEBDAV_PASSWORD) ?? "";
-  String get webdavInitPath => _preferences!.getString(_WEBDAV_INITIAL_PATH) ?? "/";
+  String get webdavInitPath => "/";   // TODO bug: if switch WebDav server, it may stack on "/old-path/"
   Future<void> setWebdavConnection(String uri, String login, String pass) async {
     if (uri != webdavUri)
       await _preferences!.setString(_WEBDAV_URI, uri);

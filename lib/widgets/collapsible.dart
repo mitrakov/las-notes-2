@@ -87,7 +87,8 @@ class _CollapsibleState extends State<Collapsible> {
               children: [
                 DefaultTextStyle.merge(style: monospace, child: child), // propagate "monospace" to all children in Highlight plugin
                 Positioned(top: 4, right: 0, child: IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 16), onPressed: () => Clipboard.setData(ClipboardData(text: code)),
+                  icon: const Icon(Icons.copy_rounded, size: 16), onPressed: () =>
+                    Clipboard.setData(ClipboardData(text: code.replaceFirst(RegExp(r'\n$'), ''))), // rm trailing \n
                 )),
               ],
             );
